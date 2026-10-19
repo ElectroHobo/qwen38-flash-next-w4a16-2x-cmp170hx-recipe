@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # install.sh — get the pinned engine: pulls the engine image pinned in
-# start.sh by digest. It carries the sm_80 EXL3 extension prebuilt.
+# start.sh by digest. It is Morrowmake's release image for their Qwen EXL3
+# recipe, used unchanged; its EXL3 extension is unused by a W4A16 checkpoint.
 #
 # Already there? Exits 0 without touching it.
 # Pull anyway:  FORCE_INSTALL=1 ./install.sh

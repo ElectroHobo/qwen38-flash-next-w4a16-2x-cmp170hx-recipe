@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 # ============================================================================
-# start.sh — Qwen3.8-Flash-Next EXL3 on 2 CUDA GPUs (sm_80 Ampere patches)
+# start.sh — Qwen3.8-Flash-Next W4A16 on 2 CUDA GPUs (sm_80 Ampere patches)
 # ============================================================================
 #
-# We serve turboderp/Qwen3.8-Flash-Next-exl3 (5.05 bpw) on two GPUs with a
-# patched vLLM: OpenAI API on 127.0.0.1:8000 as "qwen3.8-flash-next" (local
-# only unless you set HOST; no API key unless you set API_KEY), native MTP
-# speculation at k=3, 262,144-token context, vision on, tensor-parallel 2 with
-# whole routed experts per card. Every weight is on the GPUs except the n-gram
-# (PLE) table, which is read from the SSD the checkpoint sits on. No FP8, no
-# KV quantisation.
+# We serve halt95/Qwen3.8-Flash-Next-W4A16-Merlin (AutoRound INT4 experts, FP8
+# n-gram table) on two GPUs with Morrowmake's patched vLLM: OpenAI API on
+# 127.0.0.1:8000 as "qwen3.8-flash-next" (local only unless you set HOST; no
+# API key unless you set API_KEY), native MTP speculation at k=3, 262,144-token
+# context, vision on, tensor-parallel 2 with whole routed experts per card,
+# the whole decode step in one CUDA graph. Every weight is on the GPUs except
+# the n-gram (PLE) table, which lives in host RAM (51 GB). bf16 KV cache;
+# KV_OFFLOAD_GB adds a host-RAM tier for KV blocks evicted from the cards.
 #
 # The engine runs in a container: Docker with the NVIDIA Container Toolkit,
 # image pinned by digest. docker-compose.yml runs the same container.
@@ -37,13 +38,14 @@
 #   ./start.sh smoke           one chat request and one tool call
 #   ./start.sh help            this text
 #
-# The image carries the sm_80 EXL3 extension (vllm._exl3_C) prebuilt.
+# The image is Morrowmake's release image for their Qwen EXL3 recipe, used as
+# released (its EXL3 extension is simply unused by a W4A16 checkpoint).
 #
 # Config lives in .env, copied from .env.example on first run. A prefix env
 # assignment beats .env for every key:
 #
 #   CUDA_VISIBLE_DEVICES=2,3 ./start.sh restart
-#   VLLM_EXL3_PLE_OVERLAP=0 ./start.sh restart
+#   KV_OFFLOAD_GB=64 ./start.sh restart
 #
 # DRY=1 ./start.sh runs the preflight, says whether it would install or
 # download, and prints the server environment and launch command. It installs,
@@ -139,10 +141,10 @@ RELEASE_VLLM_COMMIT=18305948acba3f4c4d912cdd56f2202d2ebd94e8
 RELEASE_IMAGE=ghcr.io/morrowmake/vllm-cmp170hx@sha256:5b45c4d6feafefe2eba962375b0a9a0b64fd22b9e05abb4d1966f14a32a2db79
 IMAGE="${IMAGE:-$RELEASE_IMAGE}"
 MODELS_DIR="${MODELS_DIR:-$SCRIPT_DIR/models}"
-# The checkpoint: the 5.05 bpw branch, pinned to the revision the release was
-# validated with. The MTP drafter is inside it.
-TARGET_REPO="${TARGET_REPO:-turboderp/Qwen3.8-Flash-Next-exl3}"
-TARGET_REVISION="${TARGET_REVISION:-7cef615f7fd3681295b68848018876dfabc336c7}"
+# The checkpoint, pinned to the revision the release was validated with. The
+# MTP drafter (INT4-packed) and the FP8 n-gram table are inside it.
+TARGET_REPO="${TARGET_REPO:-halt95/Qwen3.8-Flash-Next-W4A16-Merlin}"
+TARGET_REVISION="${TARGET_REVISION:-cec53e9f90e5995b81691604ec0b32191debf797}"
 MODEL="${MODEL:-$MODELS_DIR/${TARGET_REPO##*/}}"
 HOST="${HOST:-127.0.0.1}"
 PORT="${PORT:-8000}"
@@ -159,7 +161,23 @@ export CUDA_VISIBLE_DEVICES
 SPEC_MODE="${SPEC_MODE:-mtp}"
 case "$SPEC_MODE" in mtp|none) ;; *) die "SPEC_MODE must be mtp or none, not '$SPEC_MODE'" ;; esac
 CONTAINER_NAME="${CONTAINER_NAME:-qwen38-flash-next}"
-SHM_SIZE="${SHM_SIZE:-16g}"
+# KV offload: a RAM tier of KV_OFFLOAD_GB GiB lives in the container's /dev/shm, so
+# the default shm grows to hold it (the n-gram table is pinned host memory, not shm);
+# KV_OFFLOAD_DIR (a host directory) is mounted at /kvtier for the disk tier behind it.
+# serve.sh turns both into engine flags. Carried over from the MiMo recipe (gpubox,
+# 2026-10-19).
+KV_OFFLOAD_GB="${KV_OFFLOAD_GB:-0}"
+[[ "$KV_OFFLOAD_GB" =~ ^(0|[1-9][0-9]*)$ ]] || die "KV_OFFLOAD_GB must be a whole number of GiB"
+KV_OFFLOAD_DIR="${KV_OFFLOAD_DIR:-}"
+if [ -n "$KV_OFFLOAD_DIR" ]; then
+    [ "$KV_OFFLOAD_GB" != 0 ] || die "KV_OFFLOAD_DIR needs a RAM tier in front of it: set KV_OFFLOAD_GB"
+    [[ "$KV_OFFLOAD_DIR" = /* ]] || die "KV_OFFLOAD_DIR must be an absolute path"
+fi
+if [ "$KV_OFFLOAD_GB" != 0 ]; then
+    SHM_SIZE="${SHM_SIZE:-$((KV_OFFLOAD_GB + 32))g}"
+else
+    SHM_SIZE="${SHM_SIZE:-16g}"
+fi
 CACHE_DIR="${CACHE_DIR:-$SCRIPT_DIR/cache}"
 READY_TIMEOUT="${READY_TIMEOUT:-1800}"
 BOOT_CHECK="${BOOT_CHECK:-1}"
@@ -415,7 +433,7 @@ publish_addr() {
 # every setting of yours that serve.sh reads. serve.sh (mounted from this
 # checkout) turns them into the server's flags.
 CONTAINER_KEYS="P2P P2P_PREBUILT P2P_CHECK_CACHE LAYOUT CUDA_VISIBLE_DEVICES MAX_LEN MAX_SEQS MAX_BATCHED GPU_UTIL
-SPEC_N LOCAL_ARGMAX SPEC_SCHEDULE GRAPH_MODE PLE_PLACEMENT FIRST_LIGHT REASONING_PARSER TOOL_PARSER EXTRA_ARGS
+SPEC_N LOCAL_ARGMAX SPEC_SCHEDULE GRAPH_MODE PLE_PLACEMENT FIRST_LIGHT REASONING_PARSER TOOL_PARSER EXTRA_ARGS KV_OFFLOAD_GB
 SERVED_MODEL_NAME API_KEY"
 container_env() {
     local k
@@ -448,6 +466,8 @@ container_env() {
     echo "TILELANG_TMP_DIR=/cache/.tilelang/cache/tmp"
     echo "CUDA_CACHE_PATH=/cache/.nv/ComputeCache"
     echo "VLLM_IMAGE_CACHE_SEED=${VLLM_IMAGE_CACHE_SEED:-0}"
+    # The disk tier directory is mounted at /kvtier (container_args).
+    [ -n "$KV_OFFLOAD_DIR" ] && echo "KV_OFFLOAD_DIR=/kvtier"
     for k in $CONTAINER_KEYS; do
         [ -n "${!k+x}" ] && printf '%s=%s\n' "$k" "${!k}"
     done
@@ -469,6 +489,10 @@ container_args() {
         -v "$SCRIPT_DIR/p2p_check.sh:/recipe/p2p_check.sh:ro"
         -v "$SCRIPT_DIR/p2p_probe.cu:/recipe/p2p_probe.cu:ro"
         -v "$MODEL:/models/$(basename "$MODEL"):ro")
+    if [ -n "$KV_OFFLOAD_DIR" ]; then
+        [ -n "${DRY:-}" ] || mkdir -p "$KV_OFFLOAD_DIR"
+        CRUN+=(-v "$KV_OFFLOAD_DIR:/kvtier")
+    fi
     CRUN+=(-v "$CACHE_DIR:/cache"
         --entrypoint /bin/bash "$IMAGE" /recipe/serve.sh "$SPEC_MODE")
 }

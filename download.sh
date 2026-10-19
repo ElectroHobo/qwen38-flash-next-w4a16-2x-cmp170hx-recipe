@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # download.sh — fetch the checkpoint into ./models (or MODELS_DIR).
 #
-#   turboderp/Qwen3.8-Flash-Next-exl3, 5.05 bpw branch at the pinned revision
+#   halt95/Qwen3.8-Flash-Next-W4A16-Merlin at the pinned revision
 #   ~115 GiB, of which the n-gram (PLE) table ngram_embedding.safetensors is
 #   ~37 GiB. The MTP drafter is inside the checkpoint.
 #

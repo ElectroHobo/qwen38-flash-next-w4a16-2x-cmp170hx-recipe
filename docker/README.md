@@ -1,3 +1,9 @@
+> **Unchanged from Morrowmake's Qwen EXL3 recipe.** This recipe runs their release
+> image by digest and does not rebuild it; the build tooling below is kept as they
+> ship it (it still names the EXL3 checkpoint in a few places) so the image can be
+> reproduced from source. Only `prepare.sh` and `container.env` were edited, for the
+> W4A16 checkpoint's name and pin.
+
 # Container image
 The engine in a container: the only way this recipe runs. `./start.sh` and
 `docker compose up` pull the image, start it and manage it for you (see the

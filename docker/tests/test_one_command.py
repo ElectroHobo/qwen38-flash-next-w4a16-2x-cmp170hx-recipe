@@ -8,7 +8,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 PREPARE = ROOT / 'docker' / 'prepare.sh'
-CHECKPOINT = 'Qwen3.8-Flash-Next-exl3'
+CHECKPOINT = 'Qwen3.8-Flash-Next-W4A16-Merlin'
 
 
 def release_image():

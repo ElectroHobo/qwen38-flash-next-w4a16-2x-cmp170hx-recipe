@@ -1,5 +1,6 @@
 #!/bin/bash
-# Launch Qwen3.8-Flash-Next (EXL3 5.05 bpw) on two CMP 170HX cards with whole-expert EP.
+# Launch Qwen3.8-Flash-Next (halt95 W4A16: AutoRound INT4 experts, FP8 n-gram table)
+# on two CMP 170HX cards with whole-expert EP, on Morrowmake's vllm-cmp170hx engine.
 #
 # Usage: serve.sh [mtp|none|--help]
 #   (no argument)  same as "mtp" -- the default.
@@ -10,7 +11,7 @@
 #
 # Paths (all relative to this repo unless overridden):
 #   VENV            venv from ./start.sh install    (default ./venv)
-#   MODEL           checkpoint directory, on an SSD (default ./models/Qwen3.8-Flash-Next-exl3)
+#   MODEL           checkpoint directory (default ./models/Qwen3.8-Flash-Next-W4A16-Merlin)
 #   CUDA_HOME       CUDA toolkit root               (default /usr/local/cuda-13.3)
 # API:
 #   HOST            address to listen on (default 127.0.0.1: this machine only).
@@ -22,7 +23,8 @@
 # Cards: CUDA_VISIBLE_DEVICES selects exactly two distinct physical cards
 #   (nvidia-smi numbering; default below).
 # Env overrides: MAX_SEQS, MAX_BATCHED, SPEC_N, LOCAL_ARGMAX, SPEC_SCHEDULE,
-#   PLE_PLACEMENT, REASONING_PARSER, TOOL_PARSER, EXTRA_ARGS, P2P, BOOT_CHECK.
+#   GRAPH_MODE, KV_OFFLOAD_GB, KV_OFFLOAD_DIR, REASONING_PARSER, TOOL_PARSER,
+#   EXTRA_ARGS, P2P, BOOT_CHECK.
 #   MAX_LEN must stay 262144 and GPU_UTIL 0.95 (refused otherwise);
 #   FIRST_LIGHT=1 is the 32K/eager/no-MTP diagnostic, not a serving mode.
 #
@@ -31,21 +33,19 @@
 # restart, no rebuild.
 #   VLLM_QWEN4_QSA_TOPK_CANONICAL=0  canonical sparse-attention top-k ties
 #   VLLM_CUSTOM_ALLREDUCE_FLAGS=0    flags-in-data two-shot TP2 all-reduce
-#   VLLM_EXL3_PLE_OVERLAP=0          PLE row reads overlapping the previous layer
-#   VLLM_EXL3_MOE_V2=0               EXL3 MoE kernel v2 for MoE calls of 1-64 rows
-#   VLLM_EXL3_DENSE_SPLITK=0         EXL3 split-K dense kernel for small decode launches
-#   VLLM_EXL3_DENSE_MMA=0            tensor-core blocks for the split-K kernel's 1-32 row launches
-#   VLLM_EXL3_DENSE_PREFILL_TC=0     EXL3 tensor-core dense kernel for prefill launches over 64 rows
-#   VLLM_EXL3_MOE_PREFILL_TC=0       EXL3 tensor-core MoE kernel for prefill calls of 65-3460 rows
-#   VLLM_EXL3_PLE_NATIVE_READ=0      PLE row reads in one native call instead of a thread pool
+#   (the engine's VLLM_EXL3_* switches are still exported, as Morrowmake's recipe
+#   does; a W4A16 checkpoint never reaches the EXL3 code paths, so they do nothing here)
 #   VLLM_THIN_GEMM=0                 thin-M BF16 GEMM for the small-row unquantized projections
 #   VLLM_THIN_GEMM_GLUON=0           Gluon thin GEMM for the decode shapes captured in CUDA graphs
 #   VLLM_FLA_AUTOTUNE_SKIP_SPILLING=0  FLA autotune skips configs that spill local memory
 #   P2P=auto                         verify peer content before enabling P2P
 #   P2P=off                          disable all peer transports
 #   P2P=force                        bypass the content check
-# PLE placement (PLE_PLACEMENT): ssd (engine default, the shipped target),
-#   ram or device (comparison placements, not tested as serving defaults).
+# PLE placement (PLE_PLACEMENT) is the EXL3 reader's switch and does not apply
+#   here: the FP8 table is loaded into host RAM by the engine's Engram cpu_offload.
+# GRAPH_MODE: FULL_AND_PIECEWISE (default: the whole decode step in one CUDA graph,
+#   which is what makes this build fast on an old CPU), PIECEWISE (the EXL3
+#   recipe's mode; ~3x slower per step here), FULL, NONE (with FIRST_LIGHT=1).
 # ============================================================================
 set -euo pipefail
 # generated:serving-defaults:begin
@@ -86,8 +86,8 @@ QWEN_DEFAULT_PP=1
 QWEN_DEFAULT_DTYPE=bfloat16
 QWEN_DEFAULT_KV_CACHE_DTYPE=bfloat16
 QWEN_DEFAULT_ATTENTION_CONFIG='{"indexer_kv_dtype":"bf16"}'
-QWEN_DEFAULT_ENGRAM_CONFIG='{"cpu_offload":false}'
-QWEN_DEFAULT_GRAPH_CONFIG='{"cudagraph_mode":"PIECEWISE"}'
+QWEN_DEFAULT_ENGRAM_CONFIG='{"cpu_offload":true}'
+QWEN_DEFAULT_GRAPH_CONFIG='{"cudagraph_mode":"FULL_AND_PIECEWISE"}'
 QWEN_DEFAULT_DIAGNOSTIC_GRAPH_CONFIG='{"cudagraph_mode":"NONE"}'
 QWEN_DEFAULT_LONG_PREFILL_TOKEN_THRESHOLD=0
 # generated:serving-defaults:end
@@ -155,7 +155,7 @@ CUDA_HOME="${CUDA_HOME:-/usr/local/cuda-13.3}"
 export CUDA_HOME
 export PATH="$VENV/bin:$CUDA_HOME/bin:$PATH"
 LAYOUT=${LAYOUT:-$QWEN_DEFAULT_LAYOUT}
-if [ "$LAYOUT" != tp2 ]; then echo 'EXL3 requires LAYOUT=tp2' >&2; exit 2; fi
+if [ "$LAYOUT" != tp2 ]; then echo 'This recipe requires LAYOUT=tp2' >&2; exit 2; fi
 TP=$QWEN_DEFAULT_TP PP=$QWEN_DEFAULT_PP
 export CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-$QWEN_DEFAULT_CUDA_VISIBLE_DEVICES}
 # Card numbers are physical (nvidia-smi) numbers.
@@ -200,7 +200,7 @@ export VLLM_THIN_GEMM_GLUON=${VLLM_THIN_GEMM_GLUON:-1}
 export VLLM_FLA_AUTOTUNE_SKIP_SPILLING=${VLLM_FLA_AUTOTUNE_SKIP_SPILLING:-${QWEN_DEFAULT_VLLM_FLA_AUTOTUNE_SKIP_SPILLING:-0}}
 export VLLM_USE_BREAKABLE_CUDAGRAPH=${VLLM_USE_BREAKABLE_CUDAGRAPH:-$QWEN_DEFAULT_VLLM_USE_BREAKABLE_CUDAGRAPH}
 if [ "$FIRST_LIGHT" = 0 ] && [ "$VLLM_USE_BREAKABLE_CUDAGRAPH" != 1 ]; then
-  echo 'Production EXL3 requires VLLM_USE_BREAKABLE_CUDAGRAPH=1' >&2; exit 2
+  echo 'Serving requires VLLM_USE_BREAKABLE_CUDAGRAPH=1' >&2; exit 2
 fi
 export PYTORCH_CUDA_ALLOC_CONF=${PYTORCH_CUDA_ALLOC_CONF-$QWEN_DEFAULT_PYTORCH_CUDA_ALLOC_CONF}
 # Content-verified peer access, shared by both runtimes: sets
@@ -212,7 +212,7 @@ if [ "$FIRST_LIGHT" = 1 ]; then DEFAULT_GRAPH_CONFIG=$QWEN_DEFAULT_DIAGNOSTIC_GR
 DEFAULT_GRAPH_MODE=${DEFAULT_GRAPH_CONFIG#*\"cudagraph_mode\":\"}
 DEFAULT_GRAPH_MODE=${DEFAULT_GRAPH_MODE%%\"*}
 GRAPH_MODE=${GRAPH_MODE:-$DEFAULT_GRAPH_MODE}
-case "$GRAPH_MODE" in PIECEWISE|NONE) ;; *) echo 'GRAPH_MODE must be PIECEWISE (NONE with FIRST_LIGHT=1)' >&2; exit 2;; esac
+case "$GRAPH_MODE" in PIECEWISE|NONE|FULL_AND_PIECEWISE|FULL) ;; *) echo "GRAPH_MODE must be PIECEWISE, FULL_AND_PIECEWISE, FULL or NONE" >&2; exit 2;; esac
 if [ "$GRAPH_MODE" = "$DEFAULT_GRAPH_MODE" ]; then
   GRAPH_ARGS=(--compilation-config "$DEFAULT_GRAPH_CONFIG")
 else
@@ -235,7 +235,7 @@ else
 fi
 GPU_UTIL=${GPU_UTIL-$QWEN_DEFAULT_GPU_UTIL}
 if [ "$GPU_UTIL" != 0.95 ]; then
-  echo 'EXL3 requires GPU_UTIL=0.95, including FIRST_LIGHT=1' >&2; exit 2
+  echo 'Serving requires GPU_UTIL=0.95, including FIRST_LIGHT=1' >&2; exit 2
 fi
 SPEC=()
 if [ "$MODE" = mtp ]; then
@@ -261,6 +261,25 @@ if [ "$MODE" = mtp ]; then
   SPEC_JSON+=",\"disable_eagle_block_drop\":true"
   SPEC=(--speculative-config "$SPEC_JSON}")
 fi
+# KV offload (KV_OFFLOAD_GB, default 0: off): a tier of host RAM, in GiB, that keeps KV
+# blocks evicted from the cards and copies them back instead of re-prefilling (vLLM's
+# OffloadingConnector with TieringOffloadingSpec; a shared mmap in /dev/shm, so start.sh
+# sizes shm to fit). KV_OFFLOAD_DIR (empty: none) adds a disk tier behind the RAM one;
+# start.sh mounts the directory named in .env at /kvtier. Carried over from the MiMo
+# recipe on the same engine (gpubox, 2026-10-19). The MTP config above already sets
+# disable_eagle_block_drop, which offload needs (vLLM #52735).
+KV_OFFLOAD_GB=${KV_OFFLOAD_GB:-0}
+KV_OFFLOAD_DIR=${KV_OFFLOAD_DIR:-}
+[[ "$KV_OFFLOAD_GB" =~ ^(0|[1-9][0-9]*)$ ]] || { echo 'KV_OFFLOAD_GB must be a whole number of GiB' >&2; exit 2; }
+if [ -n "$KV_OFFLOAD_DIR" ] && [ "$KV_OFFLOAD_GB" = 0 ]; then
+  echo 'KV_OFFLOAD_DIR needs a RAM tier in front of it: set KV_OFFLOAD_GB' >&2; exit 2
+fi
+KV_OFFLOAD=()
+if [ "$KV_OFFLOAD_GB" != 0 ]; then
+  OFFLOAD_JSON="{\"kv_connector\":\"OffloadingConnector\",\"kv_role\":\"kv_both\",\"kv_connector_extra_config\":{\"spec_name\":\"TieringOffloadingSpec\",\"cpu_bytes_to_use\":$((KV_OFFLOAD_GB * 1073741824))"
+  [ -n "$KV_OFFLOAD_DIR" ] && OFFLOAD_JSON+=",\"secondary_tiers\":[{\"type\":\"fs\",\"root_dir\":\"$KV_OFFLOAD_DIR\"}]"
+  KV_OFFLOAD=(--kv-transfer-config "$OFFLOAD_JSON}}")
+fi
 SERVED_MODEL_NAME=${SERVED_MODEL_NAME:-$QWEN_DEFAULT_SERVED_MODEL_NAME}
 PORT=${PORT:-$QWEN_DEFAULT_PORT}
 # The key goes to vLLM through the environment rather than --api-key, so it
@@ -271,7 +290,7 @@ CMD=("$VENV/bin/vllm" serve "$MODEL"
   --host "${HOST:-127.0.0.1}"
   --tensor-parallel-size "$TP" --pipeline-parallel-size "$PP" --enable-expert-parallel
   --dtype "$QWEN_DEFAULT_DTYPE" --kv-cache-dtype "$QWEN_DEFAULT_KV_CACHE_DTYPE"
-  --load-format exl3 --mm-encoder-tp-mode data
+  --load-format auto --mm-encoder-tp-mode data
   --attention-config "$QWEN_DEFAULT_ATTENTION_CONFIG"
   --engram-config "$QWEN_DEFAULT_ENGRAM_CONFIG"
   --max-model-len "$MAX_LEN" --gpu-memory-utilization "$GPU_UTIL"
@@ -281,7 +300,7 @@ CMD=("$VENV/bin/vllm" serve "$MODEL"
   --enable-auto-tool-choice --tool-call-parser "${TOOL_PARSER:-$QWEN_DEFAULT_TOOL_PARSER}"
   --port "$PORT"
   --prefix-match-unit 64
-  ${FL_ARGS[@]+"${FL_ARGS[@]}"} "${GRAPH_ARGS[@]}" ${SPEC[@]+"${SPEC[@]}"})
+  ${FL_ARGS[@]+"${FL_ARGS[@]}"} "${GRAPH_ARGS[@]}" ${SPEC[@]+"${SPEC[@]}"} ${KV_OFFLOAD[@]+"${KV_OFFLOAD[@]}"})
 # Additional arguments are whitespace-separated.
 read -r -a EXTRA <<< "${EXTRA_ARGS:-}"
 # FlexibleArgumentParser accepts abbreviations, underscores and dotted JSON keys.
@@ -338,7 +357,7 @@ for argument in ${EXTRA[@]+"${EXTRA[@]}"}; do
   fi
 done
 CMD+=(${EXTRA[@]+"${EXTRA[@]}"})
-echo "serve.sh: EXL3 enabled TP=2 PP=1 whole-expert-EP GPUs=$CUDA_VISIBLE_DEVICES PLE=${VLLM_EXL3_PLE_PLACEMENT:-default} dtype=BF16 KV=BF16 indexer=BF16 vision=on MTP=$MODE FIRST_LIGHT=$FIRST_LIGHT"
+echo "serve.sh: W4A16 enabled TP=2 PP=1 whole-expert-EP GPUs=$CUDA_VISIBLE_DEVICES PLE=host-ram dtype=BF16 KV=$QWEN_DEFAULT_KV_CACHE_DTYPE indexer=BF16 vision=on MTP=$MODE graphs=$GRAPH_MODE kv_offload_gb=$KV_OFFLOAD_GB FIRST_LIGHT=$FIRST_LIGHT"
 echo "serve.sh: Qwen4Exp CUDA graph mode=$GRAPH_MODE (GRAPH_MODE=$GRAPH_MODE)"
 BOOT_CHECK=${BOOT_CHECK:-1}
 case "$BOOT_CHECK" in 0|1) ;; *) echo "[boot-check] FAIL: BOOT_CHECK must be 0 or 1" >&2; exit 2 ;; esac
