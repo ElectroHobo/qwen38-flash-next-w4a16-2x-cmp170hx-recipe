@@ -173,6 +173,29 @@ the EXL3 recipe on *our* box runs at 55 to 70 tok/s for one user. Different
 weights too: EXL3 at 5.05 bpw against INT4 experts here. Quality has not been
 scored against each other yet ([docs/known-limits.md](docs/known-limits.md)).
 
+### Other two-card recipes
+
+Two other recipes publish the same protocol on 2× CMP 170HX, so they compare
+directly. Their numbers are from their READMEs on 2026-10-19; nothing here was
+re-run by us.
+
+| | This recipe (Morrowmake's engine, TP2, x16 links, Broadwell host) | [AlexBrandes](https://github.com/AlexBrandes/cmp170hx-qwen38-flash-next) (own vLLM 0.30.0 fork, PP2, Intel W4A16, table on NVMe, x4 links, Core Ultra 5 host) | [mannydelrio](https://github.com/mannydelrio/qwen38-flash-next-2x-cmp170hx) (vLLM, AWQ g32 uncensored, 4-bit table on SSD, x4 links, Ryzen 5 host, 16 GB RAM) |
+|---|---:|---:|---:|
+| 1 user · structured / code / prose | 206.4 / **245.6** / **186.2** | **250.8** / 226.2 / 157.4 | 192.4 / 177.8 / 145.4 |
+| 2 users, total | 327.3 / 361.9 / **277.0** | **406.1** / **362.9** / 212.2 | 324.5 / 242.8 / 238.9 |
+| 4 users, total | 506.9 / 541.1 / **452.1** | **697.4** / **560.2** / 384.8 | 598.2 / 446.2 / 399.2 |
+| 8 users, total | 820.7 / 826.6 / **692.4** | **999.5** / **840.4** / 566.8 | 986.4 / 734.2 / 619.6 |
+| Cold prefill | 4,527 | **6,300–7,100** (4k–64k prompts) | 7,006 |
+| Quality scored | not yet | HumanEval 157/164, GSM8K 1,271/1,319 | HumanEval 155/164 |
+
+So this recipe leads on prose at every user count and on code for one user,
+AlexBrandes leads on structured output at every count and on code at two or
+more users, and both of the others read prompts 40 to 55 % faster. Different
+engines, checkpoints and link widths; the one thing this recipe has that they
+do not is the host-RAM table with the whole step in one CUDA graph, which is
+what makes it fast on an old CPU, and the KV offload tier. If prefill speed or
+structured output is what you serve, read theirs too.
+
 | Other measurements | Value |
 |---|---|
 | KV offload, 64 GiB RAM tier | a 100k-token context evicted by 1.8M tokens of other traffic comes back in **0.68 s** (22.0 s without the tier); content checked correct |

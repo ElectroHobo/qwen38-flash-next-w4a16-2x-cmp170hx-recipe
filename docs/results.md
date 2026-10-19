@@ -76,6 +76,18 @@ finer quantisation than INT4 experts, and no quality score has been run between
 the two ([known-limits.md](known-limits.md)). The table in RAM costs 51 GB of
 host memory that the EXL3 recipe does not need.
 
+### Against the other two-card recipes
+
+Two more recipes publish the same protocol on 2× CMP 170HX; the README's
+"Other two-card recipes" table puts them side by side. In short: this recipe
+leads on prose at every user count and on code for one user; AlexBrandes's
+pipeline-parallel build on their own vLLM fork leads on structured output at
+every count and on code from two users up; both it and mannydelrio's read
+prompts 40 to 55 % faster (6,300 to 7,100 tok/s against 4,527). Neither keeps
+the table in host RAM, and neither reports a step-time or CPU dependence; both
+run on current desktop CPUs. The prefill gap is the clearest thing left to
+close here.
+
 ### KV offload: a RAM tier, and a disk tier behind it
 
 `bench/kv_offload_bench.py`: a 100k-token prefix with three hidden codes is
