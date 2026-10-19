@@ -1,0 +1,80 @@
+{
+ "tag": "merlin-oct14-mtp3-mb1024-1019",
+ "model": "Qwen3.8-Flash-Next",
+ "tokens": 400,
+ "when": "2026-10-19 09:21",
+ "prefill": [
+  {
+   "prompt_tokens": 21914,
+   "completion_tokens": 1,
+   "ttft_s": 6.723950655999943,
+   "decode_tok_s": null,
+   "wall_s": 6.724080318999768,
+   "tok_s": 3259.0958978031185
+  },
+  {
+   "prompt_tokens": 21918,
+   "completion_tokens": 1,
+   "ttft_s": 6.504819167999813,
+   "decode_tok_s": null,
+   "wall_s": 6.504940863999764,
+   "tok_s": 3369.501816103465
+  },
+  {
+   "prompt_tokens": 21918,
+   "completion_tokens": 1,
+   "ttft_s": 6.517810504999943,
+   "decode_tok_s": null,
+   "wall_s": 6.517915768999956,
+   "tok_s": 3362.7857059032726
+  },
+  {
+   "prompt_tokens": 31271,
+   "completion_tokens": 1,
+   "ttft_s": 9.371704515000602,
+   "decode_tok_s": null,
+   "wall_s": 9.371811543000149,
+   "tok_s": 3336.746261040006
+  },
+  {
+   "prompt_tokens": 31269,
+   "completion_tokens": 1,
+   "ttft_s": 9.301078024000162,
+   "decode_tok_s": null,
+   "wall_s": 9.301191490000747,
+   "tok_s": 3361.868368302536
+  },
+  {
+   "prompt_tokens": 31271,
+   "completion_tokens": 1,
+   "ttft_s": 9.296853016000568,
+   "decode_tok_s": null,
+   "wall_s": 9.296973436999906,
+   "tok_s": 3363.61131516012
+  },
+  {
+   "prompt_tokens": 34953,
+   "completion_tokens": 1,
+   "ttft_s": 10.432125596000333,
+   "decode_tok_s": null,
+   "wall_s": 10.432234115000028,
+   "tok_s": 3350.5156430824554
+  },
+  {
+   "prompt_tokens": 34954,
+   "completion_tokens": 1,
+   "ttft_s": 10.421428059999926,
+   "decode_tok_s": null,
+   "wall_s": 10.42153369100015,
+   "tok_s": 3354.0508842701015
+  },
+  {
+   "prompt_tokens": 34951,
+   "completion_tokens": 1,
+   "ttft_s": 10.402649793999444,
+   "decode_tok_s": null,
+   "wall_s": 10.402779977999671,
+   "tok_s": 3359.8170362478963
+  }
+ ]
+}

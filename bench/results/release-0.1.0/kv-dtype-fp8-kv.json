@@ -1,0 +1,41 @@
+{
+ "tag": "fp8-kv",
+ "model": "qwen3.8-flash-next-w4a16",
+ "pool_tokens": 2578229,
+ "cache_dtype": "fp8",
+ "long_ctx": {
+  "prompt_tokens": 100057,
+  "ttft_s": [
+   22.34387197900014,
+   22.40854265300004,
+   22.495232684000257
+  ],
+  "decode_tok_s": [
+   67.80888750917133,
+   66.7610862980185,
+   66.67731544337195
+  ]
+ },
+ "answers": [
+  {
+   "prompt": "Write a Python function that returns the n-th Fibonacci number iteratively, with a docstring.",
+   "content": "```python\ndef fibonacci(n: int) -> int:\n    \"\"\"\n    Return the n-th Fibonacci number using an iterative approach.\n    \n    The Fibonacci sequence is defined as:\n    F(0) = 0, F(1) = 1, and F(n) = F(n-1) + F(n-2) for n > 1.\n    \n    Parameters:\n        n (int): The index in the Fibonacci sequence (non-negative integer).\n        \n    Returns:\n        int: The n-th Fibonacci number.\n        \n    Raises:\n        ValueError: If n is negative.\n    \"\"\"\n    if n < 0:\n        raise ValueError(\"n must be a non-negative integer\")\n    if n == 0:\n        return 0\n    if n == 1:\n        return 1\n    \n    prev, curr = 0, 1\n    for _ in range(2, n + 1):\n        prev, curr = curr, prev + curr\n    return curr\n```"
+  },
+  {
+   "prompt": "Explain in one paragraph why a hash map lookup is O(1) on average but not in the worst case.",
+   "content": "A hash map achieves $O(1)$ average time complexity because a well-designed hash function distributes keys uniformly across the underlying array, ensuring that each bucket contains only a small, constant number of entries, which allows for direct access via index calculation. However, in the worst case, if the hash function produces collisions for all keys (mapping them to the same bucket) or if the load factor becomes excessively high without resizing, the data structure degrades into a linked list or tree within that single bucket. Consequently, the lookup operation requires traversing all colliding elements, resulting in $O(n)$ time complexity, where $n$ is the number of entries in the map."
+  },
+  {
+   "prompt": "Give a bash one-liner that lists the five largest files under the current directory.",
+   "content": "```bash\nfind . -type f -exec du -b {} + | sort -nr | head -n 5\n```"
+  },
+  {
+   "prompt": "A train leaves at 09:40 and arrives at 13:05. How long is the journey? Show the arithmetic.",
+   "content": "To calculate the duration of the journey, we need to find the difference between the arrival time (13:05) and the departure time (09:40).\n\n### Step-by-Step Arithmetic\n\n**1. Set up the subtraction:**\n$$ \\text{Arrival Time} - \\text{Departure Time} = \\text{Duration} $$\n$$ 13:05 - 09:40 $$\n\n**2. Handle the minutes:**\nWe cannot subtract 40 minutes from 05 minutes directly because $5 < 40$. We need to borrow 1 hour from the hours column.\n*   Borrow 1 hour from 13, leaving 12 hours.\n*   Convert that 1 hour into 60 minutes and add it to the existing 5 minutes.\n*   New minutes value: $60 + 5 = 65$ minutes.\n\nNow the time is effectively **12:65**.\n\n**3. Subtract the minutes:**\n$$ 65 \\text{ minutes} - 40 \\text{ minutes} = 25 \\text{ minutes} $$\n\n**4. Subtract the hours:**\n$$ 12 \\text{ hours} - 09 \\text{ hours} = 3 \\text{ hours} $$\n\n**5. Combine the results:**\n$$ 3 \\text{ hours and } "
+  },
+  {
+   "prompt": "Write a haiku about a cold server room.",
+   "content": "Hum of cooling fans,\nFrost clings to the metal racks,\nSilent data sleeps."
+  }
+ ]
+}

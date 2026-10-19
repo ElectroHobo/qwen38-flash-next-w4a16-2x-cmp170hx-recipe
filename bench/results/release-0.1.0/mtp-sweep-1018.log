@@ -1,0 +1,41 @@
+== 23:50 MTP=2: restart
+  docker logs -f qwen-merlin-tp2 2>&1 | grep -E 'P2P|PLE|KV cache|startup complete|Error'
+== 00:05 MTP=2: healthy after 920 s; pool kv_cache_size_tokens="1412664"
+   warm: 262 tokens; ```python def fibonacci(n: int) -> int:     """     Return t
+== 00:05 MTP=2: cmp_recipe_bench
+| | |
+|---|---:|
+| Streaming decode, 1 user, structured / code / prose | 182.2 / 197.5 / 166.4 tok/s |
+| Decode, 2 users, aggregate, structured / code / prose | 296.6 / 330.1 / 276.3 tok/s |
+| Decode, 4 users, aggregate, structured / code / prose | 494.7 / 528.6 / 441.9 tok/s |
+| Decode, 8 users, aggregate, structured / code / prose | 784.6 / 795.0 / 680.0 tok/s |
+| Cold prefill | 3,518 tok/s |
+| Cold prefill prompts (tokens) | 21,868, 31,224, 34,905 |
+== 00:09 MTP=2: vllm_conc_steps
+structured c=1 tokens=400 wall=2.36s agg=169 tok/s | engine steps=159 ms/step=14.9 drafts=158 (=0.99/step) accepted/draft=76% tok/req-step=2.53 | req walls: 2.36 | per-pos: 0.87 0.65
+structured c=1 tokens=400 wall=2.33s agg=172 tok/s | engine steps=157 ms/step=14.8 drafts=156 (=0.99/step) accepted/draft=78% tok/req-step=2.56 | req walls: 2.33 | per-pos: 0.87 0.69
+code       c=1 tokens=400 wall=2.17s agg=184 tok/s | engine steps=145 ms/step=15.0 drafts=144 (=0.99/step) accepted/draft=89% tok/req-step=2.78 | req walls: 2.17 | per-pos: 0.94 0.85
+code       c=1 tokens=400 wall=2.20s agg=181 tok/s | engine steps=147 ms/step=15.0 drafts=146 (=0.99/step) accepted/draft=87% tok/req-step=2.74 | req walls: 2.20 | per-pos: 0.94 0.81
+prose      c=1 tokens=400 wall=2.50s agg=160 tok/s | engine steps=167 ms/step=15.0 drafts=166 (=0.99/step) accepted/draft=70% tok/req-step=2.41 | req walls: 2.50 | per-pos: 0.80 0.61
+prose      c=1 tokens=400 wall=2.52s agg=159 tok/s | engine steps=169 ms/step=14.9 drafts=168 (=0.99/step) accepted/draft=69% tok/req-step=2.38 | req walls: 2.52 | per-pos: 0.81 0.58
+== 00:10 MTP=3: restart
+  docker logs -f qwen-merlin-tp2 2>&1 | grep -E 'P2P|PLE|KV cache|startup complete|Error'
+== 00:26 MTP=3: healthy after 981 s; pool kv_cache_size_tokens="1357804"
+   warm: 222 tokens; ```python def fibonacci(n: int) -> int:     """     Return t
+== 00:26 MTP=3: cmp_recipe_bench
+| | |
+|---|---:|
+| Streaming decode, 1 user, structured / code / prose | 184.7 / 217.0 / 167.5 tok/s |
+| Decode, 2 users, aggregate, structured / code / prose | 312.7 / 364.3 / 272.6 tok/s |
+| Decode, 4 users, aggregate, structured / code / prose | 499.9 / 580.6 / 422.0 tok/s |
+| Decode, 8 users, aggregate, structured / code / prose | 782.0 / 864.8 / 669.3 tok/s |
+| Cold prefill | 3,510 tok/s |
+| Cold prefill prompts (tokens) | 21,868, 31,224, 34,905 |
+== 00:30 MTP=3: vllm_conc_steps
+structured c=1 tokens=400 wall=2.32s agg=172 tok/s | engine steps=140 ms/step=16.6 drafts=139 (=0.99/step) accepted/draft=63% tok/req-step=2.88 | req walls: 2.32 | per-pos: 0.83 0.58 0.47
+structured c=1 tokens=400 wall=2.25s agg=178 tok/s | engine steps=136 ms/step=16.6 drafts=135 (=0.99/step) accepted/draft=65% tok/req-step=2.96 | req walls: 2.25 | per-pos: 0.86 0.61 0.49
+code       c=1 tokens=400 wall=1.95s agg=206 tok/s | engine steps=117 ms/step=16.6 drafts=116 (=0.99/step) accepted/draft=82% tok/req-step=3.45 | req walls: 1.95 | per-pos: 0.91 0.81 0.73
+code       c=1 tokens=400 wall=1.98s agg=202 tok/s | engine steps=119 ms/step=16.6 drafts=118 (=0.99/step) accepted/draft=80% tok/req-step=3.39 | req walls: 1.98 | per-pos: 0.94 0.80 0.66
+prose      c=1 tokens=400 wall=2.48s agg=162 tok/s | engine steps=150 ms/step=16.5 drafts=149 (=0.99/step) accepted/draft=56% tok/req-step=2.68 | req walls: 2.47 | per-pos: 0.77 0.54 0.38
+prose      c=1 tokens=400 wall=2.53s agg=158 tok/s | engine steps=154 ms/step=16.5 drafts=153 (=0.99/step) accepted/draft=54% tok/req-step=2.61 | req walls: 2.53 | per-pos: 0.72 0.53 0.36
+== 00:31 sweep done; last K left running

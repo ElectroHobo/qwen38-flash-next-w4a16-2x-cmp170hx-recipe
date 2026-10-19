@@ -1,0 +1,41 @@
+{
+ "tag": "bf16-kv",
+ "model": "qwen3.8-flash-next-w4a16",
+ "pool_tokens": 1489261,
+ "cache_dtype": "bfloat16",
+ "long_ctx": {
+  "prompt_tokens": 100057,
+  "ttft_s": [
+   21.827852403999714,
+   21.85242067999934,
+   21.88001600000007
+  ],
+  "decode_tok_s": [
+   65.02829672994905,
+   69.11993552265768,
+   69.07818684852298
+  ]
+ },
+ "answers": [
+  {
+   "prompt": "Write a Python function that returns the n-th Fibonacci number iteratively, with a docstring.",
+   "content": "```python\ndef fibonacci(n: int) -> int:\n    \"\"\"\n    Return the n-th Fibonacci number using an iterative approach.\n    \n    The Fibonacci sequence is defined as:\n    F(0) = 0, F(1) = 1, and F(n) = F(n-1) + F(n-2) for n > 1.\n    \n    Parameters:\n        n (int): The index in the Fibonacci sequence (non-negative integer).\n    \n    Returns:\n        int: The n-th Fibonacci number.\n    \n    Raises:\n        ValueError: If n is negative.\n    \n    Examples:\n        >>> fibonacci(0)\n        0\n        >>> fibonacci(1)\n        1\n        >>> fibonacci(10)\n        55\n    \"\"\"\n    if n < 0:\n        raise ValueError(\"n must be a non-negative integer\")\n    if n == 0:\n        return 0\n    if n == 1:\n        return 1\n    \n    prev, curr = 0, 1\n    for _ in range(2, n + 1):\n        prev, curr = curr, prev + curr\n    return curr\n```"
+  },
+  {
+   "prompt": "Explain in one paragraph why a hash map lookup is O(1) on average but not in the worst case.",
+   "content": "A hash map achieves $O(1)$ average time complexity because a well-designed hash function distributes keys uniformly across the underlying array, ensuring that each bucket contains a constant number of elements on average, which allows for direct access via index calculation. However, this efficiency degrades to $O(n)$ in the worst case when multiple keys hash to the same index, a phenomenon known as collision; if all $n$ keys collide into a single bucket, the data structure effectively degenerates into a linked list or tree, requiring a linear scan to locate a specific element, thus negating the constant-time advantage."
+  },
+  {
+   "prompt": "Give a bash one-liner that lists the five largest files under the current directory.",
+   "content": "```bash\nfind . -type f -exec du -h {} + | sort -rh | head -n 5\n```"
+  },
+  {
+   "prompt": "A train leaves at 09:40 and arrives at 13:05. How long is the journey? Show the arithmetic.",
+   "content": "To calculate the duration of the journey, we need to find the difference between the arrival time and the departure time.\n\n**1. Identify the times:**\n*   Departure: 09:40\n*   Arrival: 13:05\n\n**2. Set up the subtraction:**\n$$13:05 - 09:40$$\n\n**3. Perform the calculation:**\nSince 05 minutes is less than 40 minutes, we cannot subtract the minutes directly. We need to borrow 1 hour from the hours column.\n\n*   **Borrow 1 hour:**\n    *   The 13 hours becomes 12 hours.\n    *   The 05 minutes becomes $05 + 60 = 65$ minutes.\n\n*   **New calculation:**\n    $$12:65 - 09:40$$\n\n*   **Subtract the minutes:**\n    $$65 - 40 = 25 \\text{ minutes}$$\n\n*   **Subtract the hours:**\n    $$12 - 9 = 3 \\text{ hours}$$\n\n**4. Combine the results:**\nThe total duration is 3 hours and 25 minutes.\n\n**Answer:**\nThe journey is **3 hours and 25 minutes** long."
+  },
+  {
+   "prompt": "Write a haiku about a cold server room.",
+   "content": "Hum of cooling fans,\nFrost clings to the metal racks,\nSilent data sleeps."
+  }
+ ]
+}

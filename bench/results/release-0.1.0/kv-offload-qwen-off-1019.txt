@@ -1,0 +1,17 @@
+[qwen-off] seed 1792425677, prefix 100,117 tokens, codes ['6476712', '1400780', '5152486']
+[qwen-off] flood: 18 x ~100,000 tokens in 389 s
+
+[qwen-off] row              TTFT s  total s  code  reply
+[qwen-off] cold                nan    21.99  BAD   ''
+[qwen-off] warm                nan     0.35  BAD   ''
+[qwen-off] evicted             nan    21.98  BAD   ''
+[qwen-off] evicted-again       nan     0.34  BAD   ''
+
+[qwen-off] counter changes over the run:
+[qwen-off]   vllm:external_prefix_cache_hits_created +0
+[qwen-off]   vllm:external_prefix_cache_hits_total +0
+[qwen-off]   vllm:prefix_cache_hits_created +0
+[qwen-off]   vllm:prefix_cache_hits_total +200,192
+[qwen-off]   vllm:prefix_cache_queries_total +2,201,098
+[qwen-off]   vllm:request_num_preemptions_bucket +176
+[qwen-off]   vllm:request_num_preemptions_count +22
