@@ -19,9 +19,13 @@ commit `207867e` (release 1.0.0) and runs their engine image unchanged.
   recipe on the same engine: a 100k-token context evicted by other traffic
   reloads from a 64 GiB RAM tier in 0.68 s (22 s re-read without it), from an
   NVMe tier in 1.85 s; ~30 KB of KV per token.
+- Quality: HumanEval 161/164, GSM8K 199/200 (first 200), thinking on, no reply
+  cut off — level with or above the EXL3 recipe, the 3 bpw build and MiMo on
+  the same harness and box.
 - Benchmarks in `bench/` (decode and prefill under the MiaAI-Lab protocol,
   engine-step probe, KV offload, KV dtype and long context, prefill fairness,
-  soak) with the raw files of every run in `bench/results/release-0.1.0/`.
+  agent probes, quality, soak) with the raw files of every run in
+  `bench/results/release-0.1.0/`.
 - Documented and not default: FP8 KV cache (+73 % pool, −8 to −10 % decode,
   answers shift); draft count 1 / 2 / 3; the things that did not help
   (expert sharding is impossible on this checkpoint, clock locks are

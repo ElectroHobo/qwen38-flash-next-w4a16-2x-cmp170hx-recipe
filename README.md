@@ -186,7 +186,7 @@ re-run by us.
 | 4 users, total | 506.9 / 541.1 / **452.1** | **697.4** / **560.2** / 384.8 | 598.2 / 446.2 / 399.2 |
 | 8 users, total | 820.7 / 826.6 / **692.4** | **999.5** / **840.4** / 566.8 | 986.4 / 734.2 / 619.6 |
 | Cold prefill | 4,527 | **6,300–7,100** (4k–64k prompts) | 7,006 |
-| Quality scored | not yet | HumanEval 157/164, GSM8K 1,271/1,319 | HumanEval 155/164 |
+| Quality scored | HumanEval 161/164, GSM8K 199/200 (first 200; thinking on) | HumanEval 157/164, GSM8K 1,271/1,319 | HumanEval 155/164 |
 
 So this recipe leads on prose at every user count and on code for one user,
 AlexBrandes leads on structured output at every count and on code at two or
@@ -198,6 +198,7 @@ structured output is what you serve, read theirs too.
 
 | Other measurements | Value |
 |---|---|
+| Quality (thinking on, `reasoning_effort` medium, temperature 0.6, 16,000-token budget) | **HumanEval 161/164, GSM8K 199/200** (first 200 problems), no reply cut off — level with or above the EXL3 recipe (159/164, 198/200), the 3 bpw AutoRound build (161/164, 197/200) and MiMo-V2.6-Flash-RL (161/164, 195/200) scored by the same harness on the same box |
 | KV offload, 64 GiB RAM tier | a 100k-token context evicted by 1.8M tokens of other traffic comes back in **0.68 s** (22.0 s without the tier); content checked correct |
 | KV offload, NVMe tier behind a 16 GiB RAM tier | the same reload from disk in **1.85 s** |
 | 100k-token context | prompt read in 21.9 s; decode after it 177 tok/s |

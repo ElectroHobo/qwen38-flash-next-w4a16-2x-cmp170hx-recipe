@@ -14,6 +14,7 @@ run them on an idle server. The raw output of every run behind
 | `soak.py` | sustained multi-turn load with image requests mixed in (from the MiMo recipe; see its header) | as configured |
 | `agent_probes.py edit mine --port 8000 --model qwen3.8-flash-next` | code editing: a 2k-token file in the prompt, rename every function, return the whole file; decode tok/s from `usage` | ~1 min |
 | `agent_probes.py followup mine --port 8000 --model qwen3.8-flash-next` | follow-up turns: an ~18k-token conversation's second question; time to first token for each turn | ~1 min |
+| `quality_eval.py run --base http://127.0.0.1:8000 --tag mine --suites humaneval gsm8k`, then `score` and `report` | HumanEval (164, the dataset's tests run in a network-less container) and GSM8K (first 200), thinking on; needs Docker on the machine running the harness | ~10 min |
 
 `kv_offload_bench.py` sends its questions through the chat endpoint with
 thinking off: this model answers a raw completion prompt with reasoning tokens

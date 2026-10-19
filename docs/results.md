@@ -88,6 +88,29 @@ the table in host RAM, and neither reports a step-time or CPU dependence; both
 run on current desktop CPUs. The prefill gap is the clearest thing left to
 close here.
 
+### Quality
+
+`bench/quality_eval.py` (our harness: the model writes the function and the
+dataset's own tests run against it in a network-less `python:3.12-slim`
+container; GSM8K answers are compared numerically with the gold), thinking on,
+`reasoning_effort` medium, temperature 0.6 / top-p 0.95 / top-k 20, 16,000-token
+budget, eight requests at a time, on the serving configuration. The other rows
+are the same harness on the same box on earlier dates. Raw
+`merlin-w4a16-{humaneval,gsm8k}.jsonl` and `.scores.json`.
+
+| build | HumanEval (164) | GSM8K (first 200) | replies cut off | median completion tokens, HumanEval |
+|---|---:|---:|---:|---:|
+| **This recipe** (W4A16, Morrowmake's engine) | **161 / 164** | **199 / 200** | 0 | 606 |
+| Morrowmake's EXL3 recipe (5.05 bpw), on this box | 159 / 164 | 198 / 200 | 5 | 1,161 |
+| AutoRound 3 bpw, one card | 161 / 164 | 197 / 200 | 2 | 639 |
+| MiMo-V2.6-Flash-RL NVFP4, four cards | 161 / 164 | 195 / 200 | 1 | 233 |
+
+Level with or above every build we have scored, with no reply running out of
+budget. Both suites sit near their ceiling for all of these models, so they
+rule out damage rather than rank the builds; LiveCodeBench on this harness
+scores zero for every one of them, the EXL3 recipe included, and separates
+nothing.
+
 ### KV offload: a RAM tier, and a disk tier behind it
 
 `bench/kv_offload_bench.py`: a 100k-token prefix with three hidden codes is
