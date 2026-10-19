@@ -1,6 +1,11 @@
 MIT License
 
-Copyright (c) 2026 Morrowmake
+Copyright (c) 2026 Applied Integrators (ElectroHobo)
+Copyright (c) 2026 Morrowmake — start.sh, serve.sh, stop.sh, install.sh,
+download.sh, smoke.sh, boot_check.py, p2p_check.py, p2p_check.sh,
+p2p_probe.cu, docker/, docker-compose.yml and examples/ descend from the
+Qwen3.8-Flash-Next recipe at
+https://github.com/Morrowmake/qwen38-flash-next-cmp170hx-recipe (commit 207867e)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

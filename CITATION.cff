@@ -1,9 +1,35 @@
 cff-version: 1.2.0
-message: "If this recipe helps you, please cite it."
-title: "Qwen3.8-Flash-Next on 2x NVIDIA CMP 170HX: a serving recipe"
+message: "If this recipe helps you, please cite it and credit the engine, checkpoint and recipe authors named in README.md."
+title: "Qwen3.8-Flash-Next W4A16 on 2x CMP 170HX: a community recipe for Morrowmake's vllm-cmp170hx, made for old CPUs"
+type: software
 authors:
-  - name: Morrowmake
-repository-code: "https://github.com/Morrowmake/qwen38-flash-next-cmp170hx-recipe"
+  - name: "Applied Integrators"
+    alias: ElectroHobo
+version: 0.1.0
+date-released: 2026-10-19
 license: MIT
-version: 1.0.0
-date-released: 2026-10-16
+repository-code: "https://github.com/ElectroHobo/qwen38-flash-next-w4a16-cmp170hx-recipe"
+references:
+  - type: software
+    title: "vllm-cmp170hx"
+    authors:
+      - name: Morrowmake
+    repository-code: "https://github.com/Morrowmake/vllm-cmp170hx"
+    notes: "The engine and the image, at commit 18305948acba3f4c4d912cdd56f2202d2ebd94e8."
+  - type: software
+    title: "Qwen3.8-Flash-Next on 2x CMP 170HX"
+    authors:
+      - name: Morrowmake
+    repository-code: "https://github.com/Morrowmake/qwen38-flash-next-cmp170hx-recipe"
+    notes: "The recipe this one descends from, at commit 207867e (release 1.0.0)."
+  - type: data
+    title: "Qwen3.8-Flash-Next-W4A16-Merlin"
+    authors:
+      - name: halt95
+    url: "https://huggingface.co/halt95/Qwen3.8-Flash-Next-W4A16-Merlin"
+    notes: "The checkpoint, revision cec53e9f90e5995b81691604ec0b32191debf797."
+  - type: software
+    title: "Qwen3.8-Flash-Next"
+    authors:
+      - name: "Qwen Team"
+    url: "https://huggingface.co/Qwen/Qwen3.8-Flash-Next"

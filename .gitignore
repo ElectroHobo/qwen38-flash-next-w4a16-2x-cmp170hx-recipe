@@ -1,7 +1,7 @@
 # Local configuration, copied from .env.example on first run
 .env
 
-# Checkpoints (~180 GB) -- fetch with ./download.sh
+# Checkpoint (~116 GB) -- fetched by ./start.sh or ./download.sh
 models/
 
 # Environment built by ./install.sh
