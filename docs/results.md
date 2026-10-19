@@ -176,6 +176,17 @@ All on the second engine above unless noted (raw files in the same folder):
   instead of 7.5, for −4 % cold prefill. On Morrowmake's engine the proper
   lever is `--prefill-chunk-with-decodes`, which has not been measured on this
   build yet.
+- **Explicit CUDA graph capture sizes** (on this engine; raw
+  `cmp-recipe-bench-merlin-morrowmake-sizes-1019.*`): mannydelrio's build gained
+  65 % at eight users by capturing graph sizes up to 32 tokens. Here
+  `cudagraph_capture_sizes [4, 8, …, 64]` changed nothing — 200.9 / 237.9 / 185.3
+  for one user, 811.9 / 834.3 / 680.5 at eight, the same step times — because
+  Morrowmake's breakable-graph capture does not bucket by batch size the way
+  stock vLLM does.
+- **Pipeline parallel 2** (the layout behind AlexBrandes's and inordic's
+  prefill): this engine refuses it for this model — "N-gram PLE embedding
+  requires pipeline_parallel_size=1". AlexBrandes's fork carries the patches
+  that allow it. On this engine it is a port, not a setting.
 
 ## Notes on the method
 

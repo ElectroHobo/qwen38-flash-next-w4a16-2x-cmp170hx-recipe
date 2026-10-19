@@ -25,9 +25,14 @@ rest of the day without an engine error. Nothing here has run for a week yet.
 - **96 GB of host RAM is the floor.** The n-gram table is 51 GB of pinned host
   memory, allocated at start; the engine refuses to start without it. The EXL3
   recipe streams the same table from the SSD and runs in 32 GB.
-- **Two cards, whole experts per card.** Tensor-parallel 2 only. An expert
+- **Two cards, whole experts per card, tensor parallel only.** An expert
   cannot be split across the cards (the INT4 scale groups would straddle them),
-  and no other layout is wired up.
+  and the engine refuses pipeline parallelism for this model ("N-gram PLE
+  embedding requires pipeline_parallel_size=1"). That is why this recipe needs
+  x16 links and peer-to-peer where AlexBrandes's pipeline-parallel build runs
+  on stock x4 cards, and why its prompt reading is slower: tensor parallel
+  moves an activation between the cards at every layer. Pipeline parallel on
+  this engine would be a port of their patches.
 - **The first start compiles for about 15 minutes.** Later starts reuse
   `cache/`; a change of `GRAPH_MODE` or the KV dtype recompiles part of it.
 - **Decode is power-bound at 180 W.** With three drafts the cards sit at the
