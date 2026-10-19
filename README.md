@@ -237,8 +237,29 @@ attribution.
 
 ## Credits
 
-If this recipe helps you, please credit Morrowmake (the engine, the image and
-the recipe this one descends from), halt95 (the checkpoint and its packing of
-Intel's AutoRound experts, RadixArk's FP8 table and DominikBucko's MTP
-packing) and Qwen (the model), and link this repository. Citation metadata:
-[`CITATION.cff`](CITATION.cff).
+- **Morrowmake** — the [vllm-cmp170hx](https://github.com/Morrowmake/vllm-cmp170hx)
+  engine and image this runs on, and the
+  [Qwen3.8-Flash-Next recipe](https://github.com/Morrowmake/qwen38-flash-next-cmp170hx-recipe)
+  (MIT) whose scripts (`start.sh`, `serve.sh`, the P2P and boot checks, Compose,
+  the examples, the image build) this recipe descends from. Not involved in
+  this recipe.
+- **halt95** — the [W4A16 checkpoint](https://huggingface.co/halt95/Qwen3.8-Flash-Next-W4A16-Merlin)
+  and its [companion engine](https://github.com/halt95/qwen38-flash-next-3090s)
+  for RTX 3090s, whose measurements and card pointed the way. Not involved in
+  this recipe, which runs their weights on an engine they did not build it for.
+- **Intel** — the [AutoRound INT4 experts](https://huggingface.co/Intel/Qwen3.8-Flash-Next-W4A16-AutoRound)
+  inside the checkpoint; **RadixArk** — the [FP8 n-gram table](https://huggingface.co/RadixArk/Qwen3.8-Flash-Next-NVFP4);
+  **DominikBucko** — the MTP-head packing recipe. All three credited by halt95.
+- **Qwen** — [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next)
+  (Qwen Community License 1.0).
+- **vLLM** — the [project](https://github.com/vllm-project/vllm) (Apache-2.0)
+  Morrowmake's engine forks, including the Qwen3.8-Flash-Next model code, the
+  n-gram table offload to host RAM (Engram `cpu_offload`) and the KV offloading
+  connector this recipe turns on.
+- **MiaAI-Lab** — the benchmark protocol and category prompts (from their DGX
+  Spark kits, AGPL-3.0; the prompts are used here as data, the harness is our own).
+- **inco.ai** — the [DFlash 2 drafter](https://huggingface.co/incoai/Qwen3.8-Flash-Next-DFlash2)
+  for this model (Apache-2.0), documented here as the next step, not yet used.
+
+If this recipe helps you, credit the people above and link their work.
+Citation metadata for this repository: [`CITATION.cff`](CITATION.cff).

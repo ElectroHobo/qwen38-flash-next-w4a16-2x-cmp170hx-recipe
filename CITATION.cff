@@ -33,3 +33,21 @@ references:
     authors:
       - name: "Qwen Team"
     url: "https://huggingface.co/Qwen/Qwen3.8-Flash-Next"
+  - type: data
+    title: "Qwen3.8-Flash-Next-W4A16-AutoRound"
+    authors:
+      - name: Intel
+    url: "https://huggingface.co/Intel/Qwen3.8-Flash-Next-W4A16-AutoRound"
+    notes: "The INT4 routed experts inside halt95's checkpoint."
+  - type: data
+    title: "Qwen3.8-Flash-Next-NVFP4"
+    authors:
+      - name: RadixArk
+    url: "https://huggingface.co/RadixArk/Qwen3.8-Flash-Next-NVFP4"
+    notes: "The FP8 n-gram (PLE) table inside halt95's checkpoint."
+  - type: software
+    title: "vLLM"
+    authors:
+      - name: "vLLM Project"
+    repository-code: "https://github.com/vllm-project/vllm"
+    notes: "The project Morrowmake's engine forks; Apache-2.0."
