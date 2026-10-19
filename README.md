@@ -38,8 +38,12 @@ not both.
 > It runs on Morrowmake's engine and image and descends from their
 > [Qwen3.8-Flash-Next EXL3 recipe](https://github.com/Morrowmake/qwen38-flash-next-cmp170hx-recipe);
 > what is ours is the checkpoint choice, three configuration changes, the KV
-> offload wiring, the benchmarks and the measurements. Report problems in
-> [this repository's issues](https://github.com/ElectroHobo/qwen38-flash-next-w4a16-cmp170hx-recipe/issues).
+> offload wiring, the benchmarks and the measurements. **Contact for issues:
+> @ElectroHobo (Applied Integrators), in
+> [this repository's issues](https://github.com/ElectroHobo/qwen38-flash-next-w4a16-cmp170hx-recipe/issues)** —
+> not Morrowmake's. Made to the shape of Morrowmake's
+> [community recipes guidelines](https://github.com/Morrowmake/vllm-cmp170hx/blob/ampere/COMMUNITY_RECIPES.md),
+> which say the same about support and endorsement.
 
 ## Why this build exists: old CPUs
 
@@ -122,6 +126,29 @@ halt95 built this checkpoint for four RTX 3090s on their own vLLM patches, with
 an FP8 KV cache and calibrated scales. Here it runs on Morrowmake's engine
 through vLLM's compressed-tensors path; the FP8 KV scales are not used (see
 [docs/results.md](docs/results.md) for the FP8 KV measurement).
+
+### Settings, exactly
+
+What the container runs with the defaults (`DRY=1 ./start.sh` prints it):
+`vllm serve /models/Qwen3.8-Flash-Next-W4A16-Merlin --tensor-parallel-size 2
+--pipeline-parallel-size 1 --enable-expert-parallel --dtype bfloat16
+--kv-cache-dtype bfloat16 --load-format auto --mm-encoder-tp-mode data
+--attention-config '{"indexer_kv_dtype":"bf16"}' --engram-config '{"cpu_offload":true}'
+--max-model-len 262144 --gpu-memory-utilization 0.95 --max-num-seqs 8
+--max-num-batched-tokens 3460 --long-prefill-token-threshold 0
+--reasoning-parser qwen3 --enable-auto-tool-choice --tool-call-parser qwen3_coder
+--prefix-match-unit 64 --compilation-config '{"cudagraph_mode":"FULL_AND_PIECEWISE"}'
+--speculative-config '{"method":"mtp","num_speculative_tokens":3,"disable_eagle_block_drop":true}'`,
+with `KV_OFFLOAD_GB` adding `--kv-transfer-config` for the `OffloadingConnector`
+(`TieringOffloadingSpec`). Environment: `VLLM_USE_BREAKABLE_CUDAGRAPH=1`,
+`VLLM_QWEN4_QSA_TOPK_CANONICAL=1`, `VLLM_CUSTOM_ALLREDUCE_FLAGS=1`,
+`VLLM_THIN_GEMM=1`, `VLLM_THIN_GEMM_GLUON=1`, `VLLM_FLA_AUTOTUNE_SKIP_SPILLING=1`,
+`PYTORCH_CUDA_ALLOC_CONF=expandable_segments:False`, and after the P2P check
+passes `VLLM_CUSTOM_ALLREDUCE_PCIE_P2P=1` with `NCCL_P2P_LEVEL=SYS`;
+`CUDA_DEVICE_ORDER=PCI_BUS_ID`. Against Morrowmake's Qwen recipe the differences
+are `--load-format auto` (theirs: `exl3`), `cpu_offload: true` (theirs:
+`false`), `FULL_AND_PIECEWISE` (theirs: `PIECEWISE`) and the optional KV
+offload; everything else is their default.
 
 ## Headline numbers
 
