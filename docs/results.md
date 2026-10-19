@@ -94,22 +94,19 @@ close here.
 dataset's own tests run against it in a network-less `python:3.12-slim`
 container; GSM8K answers are compared numerically with the gold), thinking on,
 `reasoning_effort` medium, temperature 0.6 / top-p 0.95 / top-k 20, 16,000-token
-budget, eight requests at a time, on the serving configuration. The other rows
-are the same harness on the same box on earlier dates. Raw
+budget, eight requests at a time, on the serving configuration. Raw
 `merlin-w4a16-{humaneval,gsm8k}.jsonl` and `.scores.json`.
 
-| build | HumanEval (164) | GSM8K (first 200) | replies cut off | median completion tokens, HumanEval |
+| | passed | replies cut off | median completion tokens | median wall |
 |---|---:|---:|---:|---:|
-| **This recipe** (W4A16, Morrowmake's engine) | **161 / 164** | **199 / 200** | 0 | 606 |
-| Morrowmake's EXL3 recipe (5.05 bpw), on this box | 159 / 164 | 198 / 200 | 5 | 1,161 |
-| AutoRound 3 bpw, one card | 161 / 164 | 197 / 200 | 2 | 639 |
-| MiMo-V2.6-Flash-RL NVFP4, four cards | 161 / 164 | 195 / 200 | 1 | 233 |
+| HumanEval (all 164) | **161 / 164** | 0 | 606 | 7.6 s |
+| GSM8K (first 200) | **199 / 200** | 0 | 321 | 4.9 s |
 
-Level with or above every build we have scored, with no reply running out of
-budget. Both suites sit near their ceiling for all of these models, so they
-rule out damage rather than rank the builds; LiveCodeBench on this harness
-scores zero for every one of them, the EXL3 recipe included, and separates
-nothing.
+Both suites sit near their ceiling for a model of this size, so what they
+establish is that the INT4 experts, the table in host RAM and the unused FP8 KV
+scales did not damage the answers; they do not measure long-form writing,
+tool-call adherence or hard competition code (LiveCodeBench on this harness
+scores zero for models of this class and separates nothing).
 
 ### KV offload: a RAM tier, and a disk tier behind it
 

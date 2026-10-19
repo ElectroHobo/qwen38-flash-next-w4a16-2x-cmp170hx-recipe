@@ -20,8 +20,7 @@ commit `207867e` (release 1.0.0) and runs their engine image unchanged.
   reloads from a 64 GiB RAM tier in 0.68 s (22 s re-read without it), from an
   NVMe tier in 1.85 s; ~30 KB of KV per token.
 - Quality: HumanEval 161/164, GSM8K 199/200 (first 200), thinking on, no reply
-  cut off — level with or above the EXL3 recipe, the 3 bpw build and MiMo on
-  the same harness and box.
+  cut off.
 - Benchmarks in `bench/` (decode and prefill under the MiaAI-Lab protocol,
   engine-step probe, KV offload, KV dtype and long context, prefill fairness,
   agent probes, quality, soak) with the raw files of every run in

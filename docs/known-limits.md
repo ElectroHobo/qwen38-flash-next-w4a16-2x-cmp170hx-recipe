@@ -11,18 +11,14 @@ rest of the day without an engine error. Nothing here has run for a week yet.
 ## Known limits
 
 - **Quality is scored on two checkable suites only.** HumanEval 161/164 and
-  GSM8K 199/200 (first 200 problems), thinking on, no reply cut off — level with
-  or above Morrowmake's EXL3 recipe, the 3 bpw AutoRound build and
-  MiMo-V2.6-Flash-RL on the same harness and box ([results.md](results.md),
-  "Quality"). The checkpoint's own card adds GSM8K 198/200, structured output
-  80/80 and a 262K needle on halt95's engine. Nothing here measures long-form
-  writing, tool-call adherence or hard competition code (LiveCodeBench scores
-  zero for every build on this harness, including the EXL3 one, so it does not
-  separate them).
+  GSM8K 199/200 (first 200 problems), thinking on, no reply cut off
+  ([results.md](results.md), "Quality"). The checkpoint's own card adds GSM8K
+  198/200, structured output 80/80 and a 262K needle on halt95's engine.
+  Nothing here measures long-form writing, tool-call adherence or hard
+  competition code.
 - **INT4 experts, not EXL3.** The EXL3 recipe's weights are 5.05 bits per
   weight; this checkpoint's experts are 4-bit with 128-wide groups. The two
-  suites above do not show a difference; they are also not where one would show
-  first.
+  suites above are not where such a difference would show first.
 - **96 GB of host RAM is the floor.** The n-gram table is 51 GB of pinned host
   memory, allocated at start; the engine refuses to start without it. The EXL3
   recipe streams the same table from the SSD and runs in 32 GB.
