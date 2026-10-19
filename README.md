@@ -39,7 +39,7 @@ not both.
 > [Qwen3.8-Flash-Next EXL3 recipe](https://github.com/Morrowmake/qwen38-flash-next-cmp170hx-recipe);
 > what is ours is the checkpoint choice, three configuration changes, the KV
 > offload wiring, the benchmarks and the measurements. **Contact for issues:
-> @ElectroHobo (Applied Integrators), in
+> @ElectroHobo, in
 > [this repository's issues](https://github.com/ElectroHobo/qwen38-flash-next-w4a16-cmp170hx-recipe/issues)** —
 > not Morrowmake's. Made to the shape of Morrowmake's
 > [community recipes guidelines](https://github.com/Morrowmake/vllm-cmp170hx/blob/ampere/COMMUNITY_RECIPES.md),

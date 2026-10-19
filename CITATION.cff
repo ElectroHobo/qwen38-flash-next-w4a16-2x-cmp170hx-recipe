@@ -3,8 +3,7 @@ message: "If this recipe helps you, please cite it and credit the engine, checkp
 title: "Qwen3.8-Flash-Next W4A16 on 2x CMP 170HX: a community recipe for Morrowmake's vllm-cmp170hx, made for old CPUs"
 type: software
 authors:
-  - name: "Applied Integrators"
-    alias: ElectroHobo
+  - name: ElectroHobo
 version: 0.1.0
 date-released: 2026-10-19
 license: MIT
