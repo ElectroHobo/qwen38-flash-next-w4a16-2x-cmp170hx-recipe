@@ -48,8 +48,7 @@ not both.
 ## Why this build exists: old CPUs
 
 This recipe was made for a server with **2016-era CPUs** (dual Xeon E5-2697A v4,
-Broadwell, 3.5 GHz) and a lot of RAM, which is a common shape for a CMP 170HX
-box: the cards are cheap, the hosts they land in are often old.
+Broadwell, 3.5 GHz) and a lot of RAM.
 
 Morrowmake's EXL3 recipe reads the model's 51B-parameter n-gram table from the
 SSD in the middle of every decode step, and that read breaks the step into
