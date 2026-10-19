@@ -195,6 +195,16 @@ All on the second engine above unless noted (raw files in the same folder):
   generation 78.7 / 77.7 / 68.8 for one user against 206 / 246 / 186.
   Suffix decoding (`method: suffix`) needs the `arctic-inference` package,
   which the image does not carry.
+- **N-gram lookup in front of MTP** (upstream vLLM PR #60615, the change
+  behind inordic's +15 %, ported onto this engine and bind-mounted over the
+  image for the test; raw `cmp-recipe-bench-ngram-lookup*-1019.*`,
+  `agent-edit-ngram-lookup*-1019.json`): it loads and serves correctly, and it
+  costs 15 % on every single-request workload here — code editing 234 tok/s
+  against 275, generation 172 / 205 / 160 against 206 / 246 / 186, with the
+  default 12–16-token window and with 3–8; eight users unchanged, as the patch
+  promises. The lookup runs on every single-request step whether it matches or
+  not, and on a 15 ms step that fixed cost outweighs the matches; on the
+  author's 19 ms steps at 52 tok/s it did not. Not included.
 
 ### Agent-shaped workloads
 
