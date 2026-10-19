@@ -187,6 +187,27 @@ All on the second engine above unless noted (raw files in the same folder):
   prefill): this engine refuses it for this model — "N-gram PLE embedding
   requires pipeline_parallel_size=1". AlexBrandes's fork carries the patches
   that allow it. On this engine it is a port, not a setting.
+- **N-gram drafting instead of MTP** (`method: ngram`, 3 drafts, lookup 2 to
+  6; raw `cmp-recipe-bench-spec-ngram-1019.*`, `agent-edit-spec-ngram-1019.json`):
+  inordic's build gains 15 % on code editing by looking up drafts in the
+  context *before* the MTP head, a chain this engine does not offer. N-gram
+  alone loses everywhere here: code editing 226 tok/s against MTP's 275,
+  generation 78.7 / 77.7 / 68.8 for one user against 206 / 246 / 186.
+  Suffix decoding (`method: suffix`) needs the `arctic-inference` package,
+  which the image does not carry.
+
+### Agent-shaped workloads
+
+`bench/agent_probes.py`, on the serving configuration:
+
+| | |
+|---|---:|
+| Code editing: a 2,222-token file in the prompt, rename every function, return the whole file (2,227 tokens out) | **275 tok/s** decode, rename correct |
+| Follow-up turn: an 18.7k-token document, a question, then a second question | first turn 4.1 s to first token; **second turn 0.25 s** |
+
+Editing decodes faster than generation because MTP already profits from text
+it can copy. The follow-up turn is a prefix-cache hit at the recipe's
+`--prefix-match-unit 64`; a smaller unit would not improve on 0.25 s.
 
 ## Notes on the method
 

@@ -12,6 +12,8 @@ run them on an idle server. The raw output of every run behind
 | `kv_dtype_check.py mine --port 8000 --model qwen3.8-flash-next` | pool size, 100k-context prefill and decode, five temperature-0 answers to diff between two KV dtypes | ~3 min |
 | `prefill_fairness.py mine --port 8000 --model qwen3.8-flash-next` | what a decoding user keeps while a 30k prompt is read: tok/s before / during / after, longest pause | ~1 min |
 | `soak.py` | sustained multi-turn load with image requests mixed in (from the MiMo recipe; see its header) | as configured |
+| `agent_probes.py edit mine --port 8000 --model qwen3.8-flash-next` | code editing: a 2k-token file in the prompt, rename every function, return the whole file; decode tok/s from `usage` | ~1 min |
+| `agent_probes.py followup mine --port 8000 --model qwen3.8-flash-next` | follow-up turns: an ~18k-token conversation's second question; time to first token for each turn | ~1 min |
 
 `kv_offload_bench.py` sends its questions through the chat endpoint with
 thinking off: this model answers a raw completion prompt with reasoning tokens
