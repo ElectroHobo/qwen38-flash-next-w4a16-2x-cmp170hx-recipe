@@ -29,11 +29,13 @@
 # checkpoints and other files are never changed or removed.
 set -euo pipefail
 
-# The 5.05 bpw branch at the revision the release was validated with; the MTP
-# drafter is inside the checkpoint.
+# The checkpoint and the DFlash 2 drafter at the revisions the release was validated
+# with (the MTP head is inside the checkpoint).
 TARGET_REPO="${TARGET_REPO:-halt95/Qwen3.8-Flash-Next-W4A16-Merlin}"
 TARGET_REVISION="${TARGET_REVISION:-cec53e9f90e5995b81691604ec0b32191debf797}"
-NEED_DISK_GB="${NEED_DISK_GB:-120}"
+DRAFTER_REPO="${DRAFTER_REPO:-incoai/Qwen3.8-Flash-Next-DFlash2}"
+DRAFTER_REVISION="${DRAFTER_REVISION:-a22a1744e85c17364dcc54a6a420af7135d4c7f6}"
+NEED_DISK_GB="${NEED_DISK_GB:-122}"
 MODELS=/models
 CACHE=/cache
 CHECKOUT=/checkout
@@ -105,18 +107,25 @@ as_serving_user() {
 }
 
 prepare() {
-    local target="$MODELS/${TARGET_REPO##*/}"
+    local target="$MODELS/${TARGET_REPO##*/}" drafter="$MODELS/${DRAFTER_REPO##*/}"
     if [ "$(id -u)" = 0 ]; then
         serving_ids
         say "serving user: $SERVE_UID:$SERVE_GID"
-        mkdir -p "$CACHE" "$target"
+        mkdir -p "$CACHE" "$target" "$drafter"
         find "$CACHE" -xdev \( ! -uid "$SERVE_UID" -o ! -gid "$SERVE_GID" \) \
             -exec chown -h "$SERVE_UID:$SERVE_GID" {} +
         claim "$target"
-        claim "$MODELS" "${target##*/}"
+        claim "$drafter"
+        claim "$MODELS" "${target##*/}" "${drafter##*/}"
         as_serving_user /bin/bash "$0" prepare
     fi
     local used avail
+    if complete "$drafter"; then
+        say "$drafter: complete, skipping"
+    else
+        [ -w "$drafter" ] || fail "$drafter is not writable by uid $(id -u)"
+        fetch "$DRAFTER_REPO" "$drafter" "$DRAFTER_REVISION"
+    fi
     if complete "$target"; then
         say "$target: complete, skipping"
         say "checkpoint ready"

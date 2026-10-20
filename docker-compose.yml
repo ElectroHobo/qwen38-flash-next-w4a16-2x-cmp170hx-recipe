@@ -8,7 +8,8 @@
 #
 # `prepare` runs first and must finish: it makes ./cache and the model
 # directory writable by the serving user and downloads the checkpoint
-# (~115 GiB; resumed if interrupted, skipped once complete). The serving user
+# (~115 GiB) and the DFlash 2 drafter (~1.1 GiB); resumed if interrupted,
+# skipped once complete. The serving user
 # is whoever owns this checkout, so no user settings are needed; HOST_UID and
 # HOST_GID override it. The server then starts as that user, never as root,
 # with the release image, serve.sh and docker/container.env that ./start.sh
@@ -52,7 +53,7 @@ services:
     user: "0:0"
     working_dir: /cache
     entrypoint: ["/bin/bash", "/recipe/prepare.sh", "serve"]
-    command: ["mtp"]
+    command: ["dflash"]
     shm_size: 16g
     stop_grace_period: 120s
     # Back after a crash (a non-zero exit), up to 3 times; never after
@@ -74,6 +75,9 @@ services:
       - ./p2p_check.sh:/recipe/p2p_check.sh:ro
       - ./p2p_probe.cu:/recipe/p2p_probe.cu:ro
       - ${MODELS_DIR:-./models}/Qwen3.8-Flash-Next-W4A16-Merlin:/models/Qwen3.8-Flash-Next-W4A16-Merlin:ro
+      - ${MODELS_DIR:-./models}/Qwen3.8-Flash-Next-DFlash2:/drafter:ro
+      - ./patches/qwen4_exp_nvidia_model.py:/opt/vllm-src/vllm/models/qwen4_exp/nvidia/model.py:ro
+      - ./patches/models_config.py:/opt/vllm-src/vllm/model_executor/models/config.py:ro
       - ./cache:/cache
     healthcheck:
       test: ["CMD", "/opt/venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"]

@@ -2,9 +2,12 @@
 # Launch Qwen3.8-Flash-Next (halt95 W4A16: AutoRound INT4 experts, FP8 n-gram table)
 # on two CMP 170HX cards with whole-expert EP, on Morrowmake's vllm-cmp170hx engine.
 #
-# Usage: serve.sh [mtp|none|--help]
-#   (no argument)  same as "mtp" -- the default.
-#   mtp            native MTP drafter, num_speculative_tokens = SPEC_N (default below).
+# Usage: serve.sh [dflash|mtp|none|--help]
+#   (no argument)  same as "dflash" -- the default.
+#   dflash         inco.ai's DFlash 2 drafter (DFLASH_MODEL, mounted at /drafter by
+#                  start.sh), SPEC_N drafts (default 7) by the SPEC_SCHEDULE below, on the
+#                  two patched engine files in patches/ that start.sh mounts.
+#   mtp            the checkpoint's native MTP head, num_speculative_tokens = SPEC_N (3).
 #   none           no speculative decoding.
 # Set DRY=1 to print the environment and the command that would run instead
 # of running them.
@@ -55,7 +58,7 @@ set -euo pipefail
 # is listed only under its current name and only where its serving value differs
 # from the code default (the PLE placement default, ssd, is the engine's own).
 QWEN_DEFAULT_FIRST_LIGHT=0
-QWEN_DEFAULT_MODE=mtp
+QWEN_DEFAULT_MODE=dflash
 QWEN_DEFAULT_DIAGNOSTIC_MODE=none
 QWEN_DEFAULT_LAYOUT=tp2
 QWEN_DEFAULT_CUDA_VISIBLE_DEVICES=0,1
@@ -75,6 +78,11 @@ QWEN_DEFAULT_GPU_UTIL=0.95
 QWEN_DEFAULT_SPEC_N=3
 QWEN_DEFAULT_LOCAL_ARGMAX=0
 QWEN_DEFAULT_SPEC_SCHEDULE=
+QWEN_DEFAULT_DFLASH_MODEL=/drafter
+QWEN_DEFAULT_DFLASH_SPEC_N=7
+QWEN_DEFAULT_DFLASH_SPEC_SCHEDULE=[[1,2,7],[3,4,5],[5,8,3]]
+QWEN_DEFAULT_DFLASH_BLOCK_SIZE=1680
+QWEN_DEFAULT_DFLASH_PREFIX_MATCH_UNIT=16
 QWEN_DEFAULT_MAX_SEQS=8
 QWEN_DEFAULT_MAX_BATCHED=3460
 QWEN_DEFAULT_REASONING_PARSER=qwen3
@@ -96,8 +104,8 @@ case "$FIRST_LIGHT" in 0|1) ;; *) echo 'FIRST_LIGHT must be 0 or 1' >&2; exit 2;
 if [ "$FIRST_LIGHT" = 1 ]; then MODE=${1:-$QWEN_DEFAULT_DIAGNOSTIC_MODE}; else MODE=${1:-$QWEN_DEFAULT_MODE}; fi
 case "$MODE" in
   -h|--help) sed -n '2,48p' "$0"; exit 0 ;;
-  mtp|none) ;;
-  *) echo "serve.sh: unknown argument '$MODE' (expected mtp, none or --help)" >&2; exit 2 ;;
+  dflash|mtp|none) ;;
+  *) echo "serve.sh: unknown argument '$MODE' (expected dflash, mtp, none or --help)" >&2; exit 2 ;;
 esac
 # Container compilers use a private temporary directory on the cache mount.
 # This runs for start.sh, Compose and direct launches before Python imports.
@@ -261,6 +269,35 @@ if [ "$MODE" = mtp ]; then
   SPEC_JSON+=",\"disable_eagle_block_drop\":true"
   SPEC=(--speculative-config "$SPEC_JSON}")
 fi
+# DFlash 2 (the default). The drafter drafts a whole block in one pass, so more drafts
+# cost little; its block allows 7. 5-7 drafts need an attention block size that the
+# sparse-attention ring (12 for 5-7 drafts) divides: the engine picks 1,616-1,648, so
+# 1,680 is set (divisible by 12 and by the prefix-match unit 16). The schedule keeps 7
+# drafts where they pay (one or two requests) and 3 where the step is the GPU's.
+# Measured in docs/results.md, "DFlash 2".
+DFLASH_ARGS=()
+PREFIX_MATCH_UNIT=64
+if [ "$MODE" = dflash ]; then
+  DFLASH_MODEL=${DFLASH_MODEL:-$QWEN_DEFAULT_DFLASH_MODEL}
+  # DRY=1 runs this on the host, where /drafter is not mounted.
+  [ -n "${DRY:-}" ] || [ -f "$DFLASH_MODEL/config.json" ] || { echo "serve.sh: no DFlash 2 drafter at $DFLASH_MODEL" >&2; exit 2; }
+  SPEC_N=${SPEC_N:-$QWEN_DEFAULT_DFLASH_SPEC_N}
+  if [[ ! "$SPEC_N" =~ ^[1-7]$ ]]; then echo 'SPEC_N for dflash must be 1 to 7 (the drafter block is 8)' >&2; exit 2; fi
+  SPEC_SCHEDULE=${SPEC_SCHEDULE-$QWEN_DEFAULT_DFLASH_SPEC_SCHEDULE}
+  SPEC_JSON="{\"method\":\"dflash\",\"model\":\"$DFLASH_MODEL\",\"num_speculative_tokens\":$SPEC_N"
+  if [ -n "$SPEC_SCHEDULE" ]; then
+    SCHEDULE_RANGE='\[[1-9][0-9]*,[1-9][0-9]*,[0-9]+\]'
+    if [[ ! "$SPEC_SCHEDULE" =~ ^\[$SCHEDULE_RANGE(,$SCHEDULE_RANGE)*\]$ ]]; then
+      echo 'SPEC_SCHEDULE must be [[first,last,drafts],...] without spaces' >&2; exit 2
+    fi
+    SPEC_JSON+=",\"num_speculative_tokens_per_batch_size\":$SPEC_SCHEDULE"
+  fi
+  # A drafter's own cache group would otherwise zero every KV-offload lookup (vLLM #52735).
+  [ "${KV_OFFLOAD_GB:-0}" != 0 ] && SPEC_JSON+=",\"disable_eagle_block_drop\":true"
+  SPEC=(--speculative-config "$SPEC_JSON}")
+  DFLASH_ARGS=(--block-size "${BLOCK_SIZE:-$QWEN_DEFAULT_DFLASH_BLOCK_SIZE}")
+  PREFIX_MATCH_UNIT=$QWEN_DEFAULT_DFLASH_PREFIX_MATCH_UNIT
+fi
 # KV offload (KV_OFFLOAD_GB, default 0: off): a tier of host RAM, in GiB, that keeps KV
 # blocks evicted from the cards and copies them back instead of re-prefilling (vLLM's
 # OffloadingConnector with TieringOffloadingSpec; a shared mmap in /dev/shm, so start.sh
@@ -299,7 +336,7 @@ CMD=("$VENV/bin/vllm" serve "$MODEL"
   --reasoning-parser "${REASONING_PARSER:-$QWEN_DEFAULT_REASONING_PARSER}"
   --enable-auto-tool-choice --tool-call-parser "${TOOL_PARSER:-$QWEN_DEFAULT_TOOL_PARSER}"
   --port "$PORT"
-  --prefix-match-unit 64
+  --prefix-match-unit "$PREFIX_MATCH_UNIT" ${DFLASH_ARGS[@]+"${DFLASH_ARGS[@]}"}
   ${FL_ARGS[@]+"${FL_ARGS[@]}"} "${GRAPH_ARGS[@]}" ${SPEC[@]+"${SPEC[@]}"} ${KV_OFFLOAD[@]+"${KV_OFFLOAD[@]}"})
 # Additional arguments are whitespace-separated.
 read -r -a EXTRA <<< "${EXTRA_ARGS:-}"

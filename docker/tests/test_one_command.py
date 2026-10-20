@@ -41,7 +41,7 @@ def test_compose_runs_the_start_container_after_prepare():
     assert prepare['entrypoint'] == ['/bin/bash', '/recipe/prepare.sh']
     assert prepare['command'] == ['prepare']
     assert server['entrypoint'] == ['/bin/bash', '/recipe/prepare.sh', 'serve']
-    assert server['command'] == ['mtp'] and server['shm_size'] == '16g'
+    assert server['command'] == ['dflash'] and server['shm_size'] == '16g'
     assert server['env_file'] == ['docker/container.env']
     assert server['healthcheck']['start_period'] == '1800s'
     start = (ROOT / 'start.sh').read_text()

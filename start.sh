@@ -158,8 +158,13 @@ export LAYOUT
 CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0,1}"
 export CUDA_VISIBLE_DEVICES
 # Native MTP (mtp, the default) or no speculation (none).
-SPEC_MODE="${SPEC_MODE:-mtp}"
-case "$SPEC_MODE" in mtp|none) ;; *) die "SPEC_MODE must be mtp or none, not '$SPEC_MODE'" ;; esac
+SPEC_MODE="${SPEC_MODE:-dflash}"
+case "$SPEC_MODE" in dflash|mtp|none) ;; *) die "SPEC_MODE must be dflash, mtp or none, not '$SPEC_MODE'" ;; esac
+# The DFlash 2 drafter (SPEC_MODE=dflash, the default), pinned like the checkpoint,
+# and the two engine files it needs (patches/, mounted over the image's copies).
+DRAFTER_REPO="${DRAFTER_REPO:-incoai/Qwen3.8-Flash-Next-DFlash2}"
+DRAFTER_REVISION="${DRAFTER_REVISION:-a22a1744e85c17364dcc54a6a420af7135d4c7f6}"
+DFLASH_MODEL="${DFLASH_MODEL:-$MODELS_DIR/${DRAFTER_REPO##*/}}"
 CONTAINER_NAME="${CONTAINER_NAME:-qwen38-flash-next}"
 # KV offload: a RAM tier of KV_OFFLOAD_GB GiB lives in the container's /dev/shm, so
 # the default shm grows to hold it (the n-gram table is pinned host memory, not shm);
@@ -186,7 +191,7 @@ LAUNCHED=0
 STOP_TIMEOUT="${STOP_TIMEOUT:-120}"
 MIN_GPUS="${MIN_GPUS:-2}"
 MIN_GPU_MIB="${MIN_GPU_MIB:-61440}"      # 60 GiB; the cards we run report 65,536 MiB
-NEED_DISK_GB="${NEED_DISK_GB:-120}"      # GiB, as df -BG counts it: checkpoint 115 GiB
+NEED_DISK_GB="${NEED_DISK_GB:-122}"      # GiB, as df -BG counts it: checkpoint 115 GiB + drafter 1.1 GiB
 LOCK_WAIT="${LOCK_WAIT:-30}"
 
 LOGDIR="$SCRIPT_DIR/logs"
@@ -365,7 +370,7 @@ do_install() {
 # shard its index names, and no partial download left behind. The same check
 # decides for Docker Compose.
 model_present() { bash "$SCRIPT_DIR/docker/prepare.sh" check "$1"; }
-models_present() { model_present "$MODEL"; }
+models_present() { model_present "$MODEL" && { [ "$SPEC_MODE" != dflash ] || model_present "$DFLASH_MODEL"; }; }
 
 # hf_download <repo> <revision> <local dir>: with the hf client in the engine
 # image, run as this user so the files are yours. An interrupted download
@@ -388,6 +393,14 @@ do_download() {
     else
         log "download: $TARGET_REPO @ $TARGET_REVISION (~115 GiB)"
         hf_download "$TARGET_REPO" "$TARGET_REVISION" "$MODEL"
+    fi
+    if [ "$SPEC_MODE" = dflash ]; then
+        if model_present "$DFLASH_MODEL" && [ "${REFRESH_WEIGHTS:-0}" != "1" ]; then
+            log "download: $(basename "$DFLASH_MODEL") complete — skipping"
+        else
+            log "download: $DRAFTER_REPO @ $DRAFTER_REVISION (~1.1 GiB)"
+            hf_download "$DRAFTER_REPO" "$DRAFTER_REVISION" "$DFLASH_MODEL"
+        fi
     fi
     log "download: done"
 }
@@ -466,8 +479,9 @@ container_env() {
     echo "TILELANG_TMP_DIR=/cache/.tilelang/cache/tmp"
     echo "CUDA_CACHE_PATH=/cache/.nv/ComputeCache"
     echo "VLLM_IMAGE_CACHE_SEED=${VLLM_IMAGE_CACHE_SEED:-0}"
-    # The disk tier directory is mounted at /kvtier (container_args).
+    # The disk tier directory is mounted at /kvtier and the drafter at /drafter (container_args).
     [ -n "$KV_OFFLOAD_DIR" ] && echo "KV_OFFLOAD_DIR=/kvtier"
+    [ "$SPEC_MODE" = dflash ] && echo "DFLASH_MODEL=/drafter"
     for k in $CONTAINER_KEYS; do
         [ -n "${!k+x}" ] && printf '%s=%s\n' "$k" "${!k}"
     done
@@ -492,6 +506,11 @@ container_args() {
     if [ -n "$KV_OFFLOAD_DIR" ]; then
         [ -n "${DRY:-}" ] || mkdir -p "$KV_OFFLOAD_DIR"
         CRUN+=(-v "$KV_OFFLOAD_DIR:/kvtier")
+    fi
+    if [ "$SPEC_MODE" = dflash ]; then
+        CRUN+=(-v "$DFLASH_MODEL:/drafter:ro"
+            -v "$SCRIPT_DIR/patches/qwen4_exp_nvidia_model.py:/opt/vllm-src/vllm/models/qwen4_exp/nvidia/model.py:ro"
+            -v "$SCRIPT_DIR/patches/models_config.py:/opt/vllm-src/vllm/model_executor/models/config.py:ro")
     fi
     CRUN+=(-v "$CACHE_DIR:/cache"
         --entrypoint /bin/bash "$IMAGE" /recipe/serve.sh "$SPEC_MODE")
