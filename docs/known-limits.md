@@ -6,13 +6,15 @@ Release 0.1.0 (2026-10-19). Measured on one box, one weekend: a dual Xeon
 E5-2697A v4 host with two CMP 170HX cards. The serving configuration ran
 through the decode, prefill, step, KV offload and long-context benchmarks in
 [results.md](results.md) and served an Open WebUI and agent sessions for the
-rest of the day without an engine error. Nothing here has run for a week yet.
+rest of the day without an engine error; the DFlash 2 default served from the
+evening on. Nothing here has run for a week yet.
 
 ## Known limits
 
-- **Quality is scored on two checkable suites only.** HumanEval 161/164 and
-  GSM8K 199/200 (first 200 problems), thinking on, no reply cut off
-  ([results.md](results.md), "Quality"). The checkpoint's own card adds GSM8K
+- **Quality is scored on two checkable suites only.** HumanEval 163/164 and
+  GSM8K 197/200 (first 200 problems) with the DFlash 2 default, 161/164 and
+  199/200 with MTP, thinking on, no reply cut off ([results.md](results.md),
+  "Quality"). The checkpoint's own card adds GSM8K
   198/200, structured output 80/80 and a 262K needle on halt95's engine.
   Nothing here measures long-form writing, tool-call adherence or hard
   competition code.
@@ -32,26 +34,33 @@ rest of the day without an engine error. Nothing here has run for a week yet.
   this engine would be a port of their patches.
 - **The first start compiles for about 15 minutes.** Later starts reuse
   `cache/`; a change of `GRAPH_MODE` or the KV dtype recompiles part of it.
-- **Decode is power-bound at 180 W.** With three drafts the cards sit at the
-  cap during decode at 1400 to 1499 MHz. Locking clocks does nothing; raising
+- **Decode is power-bound at 180 W.** With three MTP drafts the cards already
+  sat at the cap during decode, at 1400 to 1499 MHz. Locking clocks does nothing; raising
   the cap is a decision about your power supply, not this recipe.
 - **The disk tier fills disks.** `KV_OFFLOAD_DIR` is write-through and never
   pruned. One benchmark run wrote 58 GB. A dedicated volume with a hard size, or
   leave it off.
 - **FP8 KV costs decode on these cards** (no FP8 units): −8 to −10 % at one
   user for a 73 % larger pool, and the answers shift. Documented, not default.
-- **halt95's drafter is MTP; the DFlash 2 drafter is not wired in.**
-  [incoai/Qwen3.8-Flash-Next-DFlash2](https://huggingface.co/incoai/Qwen3.8-Flash-Next-DFlash2)
-  (Apache-2.0, published 2026-10-19) reports +23 % over MTP at one user on its
-  authors' engine. Morrowmake's engine has the DFlash 2 speculator but no
-  capture hook for this model yet; it needs a port of inco.ai's small SGLang
-  patch to the engine's Qwen model. Not started.
+- **DFlash 2 runs on two patched engine files.** Morrowmake's image is used as
+  released, but in the default mode `start.sh` mounts two of its source files
+  from [`patches/`](../patches/) over the image's (48 lines added, 1 changed).
+  They are pinned to the engine commit this recipe pins; a new engine release
+  needs them re-made against it. `SPEC_MODE=mtp` runs the image unmodified.
+- **Seven drafts need a forced block size.** Five to seven DFlash drafts start
+  only with `--block-size 1680`, which `serve.sh` sets; a different `SPEC_N` or
+  context is untested with it. The drafter allows at most 7.
+- **Follow-up turns are a little slower than with MTP.** The second turn of an
+  18.7k-token conversation starts in 0.49 s, against 0.25 s with MTP: four or
+  more drafts need a prefix-match unit of 16 instead of 64.
 - **Agent fairness is not tuned.** A 30k-token prompt arriving while someone is
-  decoding stalls their decode for the read (about 7 s at 4,500 tok/s). The
-  engine's `--prefill-chunk-with-decodes` is the lever and has not been
-  measured on this build; `MAX_BATCHED` is the blunt one.
+  decoding drops their decode to about 8 to 10 tok/s for the 6 s read. The
+  engine's `--prefill-chunk-with-decodes 384` (via `EXTRA_ARGS`) keeps 13 tok/s
+  and cuts the longest pause from 0.7 to 0.25 s, but stretches the prompt's read
+  from 6.3 to 22.7 s, so it is not the default.
 - **The engine image is Morrowmake's and may move.** This recipe pins it by
-  digest and runs it unchanged; if they retire the digest, `./start.sh update`
+  digest and runs it as released, with the two files above mounted; if they
+  retire the digest, `./start.sh update`
   cannot help until this recipe is re-pinned and re-measured.
 - **`docker/` is Morrowmake's build tooling, unchanged** beyond the
   checkpoint's name and pin in `prepare.sh` and `container.env`. It still names

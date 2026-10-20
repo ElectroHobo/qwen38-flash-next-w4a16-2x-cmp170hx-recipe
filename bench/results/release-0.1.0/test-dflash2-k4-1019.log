@@ -1,0 +1,24 @@
+== 17:02 dflash2-k4-1019: start (dflash, 4 drafts, --prefix-match-unit 16)
+== 17:07 dflash2-k4-1019: start.sh exit 0
+serve.sh: EXL3 enabled TP=2 PP=1 whole-expert-EP GPUs=2,3 PLE=default dtype=BF16 KV=BF16 indexer=BF16 vision=on MTP=dflash FIRST_LIGHT=0
+(APIServer pid=1) INFO 10-19 22:03:28 [model.py:733] Resolved architecture: DFlash2DraftModel
+(EngineCore pid=455) INFO 10-19 22:04:00 [core.py:133] Initializing a V1 LLM engine (v0.32.0rc1.dev249+g18305948a) with config: model='/models/Qwen3.8-Flash-Next-W4A16-Merlin', speculative_config=Spec
+(Worker_TP1_EP1 pid=628) INFO 10-19 22:05:59 [eagle3_utils.py:27] Using Eagle3 auxiliary layers from config: (6, 16, 26, 36, 46)
+pool kv_cache_size_tokens="1509680"
+sanity: 222 tokens | ```python def fibonacci(n: int) -> int:     """     Return the n-th Fibonacci number using an iterative approach.          The Fibonacci sequence is defined as:
+== 17:07 dflash2-k4-1019: steps
+structured c=1 tokens=400 wall=1.79s agg=223 tok/s  steps=131 ms=13.7 acc=52% tok/step=3.08 pos=0.84 0.55 0.40 0.30
+structured c=1 tokens=400 wall=1.80s agg=222 tok/s  steps=132 ms=13.7 acc=52% tok/step=3.05 pos=0.82 0.56 0.39 0.31
+code       c=1 tokens=400 wall=1.51s agg=265 tok/s  steps=98 ms=15.4 acc=78% tok/step=4.12 pos=0.93 0.84 0.72 0.64
+code       c=1 tokens=400 wall=1.51s agg=265 tok/s  steps=99 ms=15.2 acc=78% tok/step=4.08 pos=0.94 0.84 0.71 0.62
+prose      c=1 tokens=400 wall=1.85s agg=216 tok/s  steps=136 ms=13.6 acc=49% tok/step=2.96 pos=0.79 0.56 0.36 0.25
+prose      c=1 tokens=400 wall=2.13s agg=188 tok/s  steps=156 ms=13.6 acc=39% tok/step=2.58 pos=0.68 0.42 0.29 0.19
+== 17:08 dflash2-k4-1019: edit probe
+[dflash2-k4-1019] edit: prompt ~2,222 tokens of code; decode median 359.2 tok/s
+== 17:08 dflash2-k4-1019: bench
+| Streaming decode, 1 user, structured / code / prose | 229.0 / 315.2 / 202.3 tok/s |
+| Decode, 2 users, aggregate, structured / code / prose | 347.1 / 436.4 / 318.0 tok/s |
+| Decode, 4 users, aggregate, structured / code / prose | 536.8 / 659.0 / 463.4 tok/s |
+| Decode, 8 users, aggregate, structured / code / prose | 825.0 / 1017.1 / 701.9 tok/s |
+| Cold prefill | 4,807 tok/s |
+== 17:11 dflash2-k4-1019: done

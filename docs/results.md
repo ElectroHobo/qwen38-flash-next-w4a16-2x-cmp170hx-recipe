@@ -11,28 +11,90 @@ are in [`bench/`](../bench/). Dates are 2026-10-18 and 2026-10-19.
 
 ### The serving configuration
 
-Recipe defaults: `halt95/Qwen3.8-Flash-Next-W4A16-Merlin`, TP2 with whole
-experts per card, the n-gram table in host RAM, `FULL_AND_PIECEWISE` CUDA
-graphs, 3 MTP drafts, bf16 KV, 262,144 context, `MAX_BATCHED` 3460.
-`cmp_recipe_bench.py` (MiaAI-Lab's protocol: 400 tokens, temperature 0, thinking
-off; one user the median of five streaming runs, more users the median aggregate
-of three runs, prefill the median of three real-text prompts repeated three
-times). Raw: `cmp-recipe-bench-merlin-morrowmake-fullgraph-1019.*`.
+Recipe defaults, started from a fresh clone of this repository with `./start.sh`
+and `KV_OFFLOAD_GB=64` (startup check passed: 666 of 714 drafts accepted):
+`halt95/Qwen3.8-Flash-Next-W4A16-Merlin`, TP2 with whole experts per card, the
+n-gram table in host RAM, `FULL_AND_PIECEWISE` CUDA graphs, inco.ai's DFlash 2
+drafter scheduled 7 / 5 / 3 by requests, block size 1680, bf16 KV, 262,144
+context, `MAX_BATCHED` 3460. `cmp_recipe_bench.py` (MiaAI-Lab's protocol: 400
+tokens, temperature 0, thinking off; one user the median of five streaming runs,
+more users the median aggregate of three runs, prefill the median of three
+real-text prompts repeated three times). Raw:
+`cmp-recipe-bench-recipe-0.1.0-fresh.*`, `agent-*-recipe-0.1.0-fresh.json`,
+`kv-offload-recipe-0.1.0-fresh-ram64.txt`.
 
-| | tok/s |
-|---|---:|
-| 1 user, structured / code / prose | 206.4 / 245.6 / 186.2 |
-| 2 users, total | 327.3 / 361.9 / 277.0 |
-| 4 users, total | 506.9 / 541.1 / 452.1 |
-| 8 users, total | 820.7 / 826.6 / 692.4 |
-| Cold prefill (21,868 / 31,224 / 34,905-token prompts) | 4,527 |
-| KV pool | 1,489,261 tokens |
+| | DFlash 2 (default) | MTP, 3 drafts (`SPEC_MODE=mtp`) |
+|---|---:|---:|
+| 1 user, structured / code / prose | **253.2 / 348.9 / 203.2** | 206.4 / 245.6 / 186.2 |
+| 2 users, total | 381.1 / 483.8 / 298.1 | 327.3 / 361.9 / 277.0 |
+| 4 users, total | 515.2 / 688.6 / 455.8 | 506.9 / 541.1 / 452.1 |
+| 8 users, total | 842.2 / 992.1 / 726.7 | 820.7 / 826.6 / 692.4 |
+| Code editing, one user (`agent_probes.py edit`) | 497 | 275 |
+| Follow-up turn, time to first token (`agent_probes.py followup`) | 0.30 s | 0.25 s |
+| Cold prefill (21,868 / 31,224 / 34,905-token prompts) | 4,729 | 4,527 |
+| KV pool | 1,398,101 tokens | 1,489,261 tokens |
+
+The MTP column is the same build measured earlier the same day (raw
+`cmp-recipe-bench-merlin-morrowmake-fullgraph-1019.*`); the rest of this
+section and the next are about that configuration, which is what established
+the 15 ms step.
 
 The engine step (`vllm_conc_steps.py`, 400 tokens pinned, from the server's own
 `iteration_tokens_total_count`; raw `conc-steps-merlin-morrowmake-fullgraph-1019.txt`):
 **15.2 ms at one user, 19.6 at two, 23 to 25 at four.** MTP accepts 0.84 /
 0.56 / 0.45 of its three drafts by position on structured prompts and 0.92 /
 0.84 / 0.79 on code, for 2.9 to 3.5 tokens per request-step.
+
+### DFlash 2: the drafter, and the two engine files it needs
+
+The default drafter is [inco.ai's DFlash 2 drafter](https://huggingface.co/incoai/Qwen3.8-Flash-Next-DFlash2)
+for this model (Apache-2.0, revision `a22a1744`), a 5-layer block-diffusion
+drafter that proposes a whole block of up to 7 tokens in one pass. Morrowmake's
+engine already carries the DFlash 2 speculator (their GLM recipe runs one); the
+Qwen3.8-Flash-Next model code did not let a drafter attach. Two engine files in
+[`patches/`](../patches/), mounted over the image's copies by `start.sh` and
+Compose, add that (48 lines added, 1 changed; [`patches/README.md`](../patches/README.md)):
+
+- `qwen4_exp_nvidia_model.py`: the model declares itself a drafter target and
+  hands out the hidden state entering layers 6, 16, 26, 36 and 46, completed
+  across the hyper-connection streams and averaged over them — what the
+  drafter was trained on (inco.ai's capture patch: completed outputs of layers
+  5, 15, 25, 35, 45, averaged over the four streams; the engine adds one to
+  DFlash layer ids).
+- `models_config.py`: `dflash` added to the speculation methods the model's
+  config check accepts.
+
+Measured on the same box, each run on a fresh restart, no KV tier (raw
+`cmp-recipe-bench-{dflash2-k3,dflash2-k4,dflash2-k4sched,tune-*}-1019.*`,
+`conc-steps-*`, `agent-edit-*`):
+
+| | MTP, 3 drafts | DFlash 2, 3 | DFlash 2, 4 | DFlash 2, 7 | **DFlash 2, 7 / 5 / 3 by users (default)** |
+|---|---:|---:|---:|---:|---:|
+| 1 user, structured / code / prose | 206 / 246 / 186 | 229 / 273 / 199 | 229 / 315 / 202 | 242 / 357 / 205 | **239 / 353 / 204** |
+| 2 users, total | 327 / 362 / 277 | 347 / 368 / 314 | 347 / 436 / 318 | 379 / 487 / 294 | **385 / 485 / 309** |
+| 4 users, total | 507 / 541 / 452 | 566 / 602 / 491 | 537 / 659 / 463 | 536 / 705 / 431 | **526 / 686 / 456** |
+| 8 users, total | 821 / 827 / 692 | 877 / 951 / 737 | 825 / 1,017 / 702 | 733 / 1,000 / 593 | **847 / 986 / 728** |
+| code editing (a 2,222-token file, rename, whole file back) | 275 | 302 | 359 | 501 | **496** |
+| step at 1 user | 15.2 ms | 14.0 ms | 13.7–15.4 ms | 15.2–15.6 ms | 15.5–15.9 ms |
+| KV pool at 262k | 1,489,261 | 1,557,845 | 1,509,680 | 1,403,318 | 1,398,101 |
+
+At three drafts DFlash 2 accepts about as much as MTP; the gain is the cheaper
+step, one drafting pass instead of three MTP head runs. More drafts then pay on
+code: at seven, code acceptance by position is 0.92 / 0.82 / 0.73 / 0.67 / 0.56
+/ 0.47 / 0.34, 5.5 tokens per step. At eight users the step is the GPU's and
+seven drafts cost structured and prose, so the default schedule
+(`[[1,2,7],[3,4,5],[5,8,3]]`) drafts 7 for one or two requests, 5 for three or
+four, 3 beyond.
+
+Five to seven drafts need `--block-size 1680` (set by `serve.sh` in dflash
+mode): the sparse-attention ring for 5–7 drafts is 12 tokens and must divide
+the attention block size, and the engine's own choice (1,616–1,648) does not;
+1,680 is divisible by 12 and by the prefix-match unit 16 that four or more
+drafts need. Without it the server refuses to start ("QSA ring capacity 12
+must divide the attention block size 1648").
+
+Quality on the default (`bench/quality_eval.py`, settings as in "Quality"):
+HumanEval 163/164, GSM8K 197/200, no reply cut off.
 
 ### Why the step is 15 ms and not 44: the CPU, the table and the graph
 
@@ -64,26 +126,26 @@ Broadwell host. Same protocol, same card count, same context.
 
 | | Morrowmake's EXL3 recipe (published) | This recipe |
 |---|---:|---:|
-| 1 user, structured / code / prose | 152.8 / 152.6 / 118.3 | 206.4 / 245.6 / 186.2 |
-| 2 users, total | 236.5 / 265.0 / 204.6 | 327.3 / 361.9 / 277.0 |
-| 4 users, total | 357.1 / 458.6 / 327.2 | 506.9 / 541.1 / 452.1 |
-| 8 users, total | 588.2 / 674.7 / 489.9 | 820.7 / 826.6 / 692.4 |
-| Cold prefill | 2,651 | 4,527 |
-| KV pool at 262k | 1,044,325 | 1,489,261 |
+| 1 user, structured / code / prose | 152.8 / 152.6 / 118.3 | 253.2 / 348.9 / 203.2 |
+| 2 users, total | 236.5 / 265.0 / 204.6 | 381.1 / 483.8 / 298.1 |
+| 4 users, total | 357.1 / 458.6 / 327.2 | 515.2 / 688.6 / 455.8 |
+| 8 users, total | 588.2 / 674.7 / 489.9 | 842.2 / 992.1 / 726.7 |
+| Cold prefill | 2,651 | 4,729 |
+| KV pool at 262k | 1,044,325 | 1,398,101 |
 
 What the comparison does not say: the EXL3 weights are 5.05 bits per weight, a
-finer quantisation than INT4 experts, and no quality score has been run between
-the two ([known-limits.md](known-limits.md)). The table in RAM costs 51 GB of
+finer quantisation than INT4 experts, and the drafters differ (their MTP head,
+our DFlash 2). The table in RAM costs 51 GB of
 host memory that the EXL3 recipe does not need.
 
 ### Against the other two-card recipes
 
 Two more recipes publish the same protocol on 2× CMP 170HX; the README's
 "Other two-card recipes" table puts them side by side. In short: this recipe
-leads on prose at every user count and on code for one user; AlexBrandes's
-pipeline-parallel build on their own vLLM fork leads on structured output at
-every count and on code from two users up; both it and mannydelrio's read
-prompts 40 to 55 % faster (6,300 to 7,100 tok/s against 4,527). Neither keeps
+leads on code and prose at every user count and is level on structured output
+for one user; AlexBrandes's pipeline-parallel build on their own vLLM fork
+leads on structured output from two users up; both it and mannydelrio's read
+prompts 33 to 50 % faster (6,300 to 7,100 tok/s against 4,729). Neither keeps
 the table in host RAM, and neither reports a step-time or CPU dependence; both
 run on current desktop CPUs. The prefill gap is the clearest thing left to
 close here.
@@ -94,13 +156,20 @@ close here.
 dataset's own tests run against it in a network-less `python:3.12-slim`
 container; GSM8K answers are compared numerically with the gold), thinking on,
 `reasoning_effort` medium, temperature 0.6 / top-p 0.95 / top-k 20, 16,000-token
-budget, eight requests at a time, on the serving configuration. Raw
-`merlin-w4a16-{humaneval,gsm8k}.jsonl` and `.scores.json`.
+budget, eight requests at a time. Raw `dflash2-k7sched-*` (DFlash 2 default),
+`dflash2-w4a16-*` (DFlash 2, 4 drafts), `merlin-w4a16-*` (MTP),
+`{humaneval,gsm8k}.jsonl` and `.scores.json`.
 
-| | passed | replies cut off | median completion tokens | median wall |
-|---|---:|---:|---:|---:|
-| HumanEval (all 164) | **161 / 164** | 0 | 606 | 7.6 s |
-| GSM8K (first 200) | **199 / 200** | 0 | 321 | 4.9 s |
+| | DFlash 2 (default) | DFlash 2, 4 drafts | MTP, 3 drafts |
+|---|---:|---:|---:|
+| HumanEval (all 164) | **163 / 164** | 164 / 164 | 161 / 164 |
+| GSM8K (first 200) | **197 / 200** | 197 / 200 | 199 / 200 |
+| replies cut off | 0 | 0 | 0 |
+| median completion tokens, HumanEval | 587 | 605 | 606 |
+| median wall per problem, HumanEval | 6.0 s | 6.2 s | 7.6 s |
+
+The differences between the drafters are within temperature-0.6 sampling
+noise; drafting is lossless (every draft is verified by the target).
 
 Both suites sit near their ceiling for a model of this size, so what they
 establish is that the INT4 experts, the table in host RAM and the unused FP8 KV
@@ -128,6 +197,14 @@ The RAM run loaded 3.03 GB for the 100,224-token prefix, so this build's KV is
 disk run read 2.99 GB back from the fs tier and wrote 61 GB to it over the run.
 **The disk tier is write-through and is never pruned**: one run wrote 58 GB and
 took a 66 GB-free NVMe to 99 %. Put it on a volume of its own with a hard size.
+
+The table above is the MTP build. With the DFlash 2 default and the same 64 GiB
+tier, from the fresh clone: cold 20.75 s, warm 0.56 s, **evicted 0.89 s**,
+evicted-again 0.57 s, all three codes correct; `external_prefix_cache_hits_total`
++99,120 tokens and 2.85 GB loaded from the tier (raw
+`kv-offload-recipe-0.1.0-fresh-ram64.txt`). The tier needs
+`"disable_eagle_block_drop": true` with a drafter, which `serve.sh` adds when
+`KV_OFFLOAD_GB` is set.
 
 ### FP8 KV cache (not the default)
 
@@ -158,7 +235,7 @@ speed.
 time to first token 21.9 s (4,570 tok/s prefill), then **176.8 tok/s** of
 decode (183.9 / 176.8 / 175.2). About 15 % below the short-context rate.
 
-### Draft count
+### MTP draft count
 
 Measured on a second engine with the same checkpoint (vLLM 0.29.1 with the
 `ple1` patches and a graph-compatible table path; raw

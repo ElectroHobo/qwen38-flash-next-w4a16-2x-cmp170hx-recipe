@@ -15,18 +15,28 @@ commit `207867e` (release 1.0.0) and runs their engine image unchanged.
   15 ms: 206.4 / 245.6 / 186.2 tok/s for one user (structured / code / prose),
   820.7 / 826.6 / 692.4 across eight, 4,527 tok/s cold prefill, a
   1,489,261-token pool at 262,144 context.
+- DFlash 2 by default: inco.ai's `Qwen3.8-Flash-Next-DFlash2` drafter
+  (Apache-2.0, `a22a1744`) downloaded and pinned beside the checkpoint, and two
+  engine files in `patches/` (48 lines added, 1 changed) mounted over the image's
+  so the model hands the drafter the hidden states it was trained on. 7 drafts
+  for one or two requests, 5 for three or four, 3 beyond, with `--block-size
+  1680` so five to seven drafts start. Against MTP: one user 239 / 353 / 204
+  tok/s (+16 / +43 / +10 %), code editing 496 (+80 %), eight users 847 / 986 /
+  728; HumanEval 163/164, GSM8K 197/200. `SPEC_MODE=mtp` runs the checkpoint's
+  MTP head on the image as released.
 - KV offload (`KV_OFFLOAD_GB`, `KV_OFFLOAD_DIR`), carried over from the MiMo
   recipe on the same engine: a 100k-token context evicted by other traffic
   reloads from a 64 GiB RAM tier in 0.68 s (22 s re-read without it), from an
   NVMe tier in 1.85 s; ~30 KB of KV per token.
-- Quality: HumanEval 161/164, GSM8K 199/200 (first 200), thinking on, no reply
+- Quality with MTP: HumanEval 161/164, GSM8K 199/200 (first 200), thinking on, no reply
   cut off.
 - Benchmarks in `bench/` (decode and prefill under the MiaAI-Lab protocol,
   engine-step probe, KV offload, KV dtype and long context, prefill fairness,
   agent probes, quality, soak) with the raw files of every run in
   `bench/results/release-0.1.0/`.
 - Documented and not default: FP8 KV cache (+73 % pool, −8 to −10 % decode,
-  answers shift); draft count 1 / 2 / 3; the things that did not help
+  answers shift); MTP and DFlash draft counts; the fair-chunk flag; the things
+  that did not help
   (expert sharding is impossible on this checkpoint, clock locks are
   power-bound, `NCCL_PROTO=LL` slows prefill).
 - Removed Morrowmake's `tools/` (their release tooling). `docker/` is kept as

@@ -1,0 +1,24 @@
+== 16:36 dflash2-k3-1019: start (dflash, 3 drafts)
+== 16:45 dflash2-k3-1019: start.sh exit 0
+serve.sh: EXL3 enabled TP=2 PP=1 whole-expert-EP GPUs=2,3 PLE=default dtype=BF16 KV=BF16 indexer=BF16 vision=on MTP=dflash FIRST_LIGHT=0
+(APIServer pid=1) INFO 10-19 21:36:58 [model.py:733] Resolved architecture: DFlash2DraftModel
+(EngineCore pid=454) INFO 10-19 21:37:31 [core.py:133] Initializing a V1 LLM engine (v0.32.0rc1.dev249+g18305948a) with config: model='/models/Qwen3.8-Flash-Next-W4A16-Merlin', speculative_config=Spec
+(Worker_TP0_EP0 pid=753) INFO 10-19 21:40:27 [eagle3_utils.py:27] Using Eagle3 auxiliary layers from config: (6, 16, 26, 36, 46)
+pool kv_cache_size_tokens="1557845"
+sanity: 222 tokens | ```python def fibonacci(n: int) -> int:     """     Return the n-th Fibonacci number using an iterative approach.          The Fibonacci sequence is defined as:
+== 16:45 dflash2-k3-1019: steps
+structured c=1 tokens=400 wall=2.03s agg=197 tok/s  steps=146 ms=13.9 acc=59% tok/step=2.76 pos=0.81 0.54 0.41
+structured c=1 tokens=400 wall=2.00s agg=200 tok/s  steps=143 ms=14.0 acc=60% tok/step=2.82 pos=0.82 0.56 0.44
+code       c=1 tokens=400 wall=1.70s agg=235 tok/s  steps=119 ms=14.3 acc=80% tok/step=3.39 pos=0.92 0.82 0.65
+code       c=1 tokens=400 wall=1.76s agg=228 tok/s  steps=124 ms=14.2 acc=76% tok/step=3.25 pos=0.89 0.77 0.60
+prose      c=1 tokens=400 wall=2.21s agg=181 tok/s  steps=160 ms=13.8 acc=51% tok/step=2.52 pos=0.73 0.46 0.34
+prose      c=1 tokens=400 wall=2.19s agg=182 tok/s  steps=159 ms=13.8 acc=51% tok/step=2.53 pos=0.73 0.49 0.31
+== 16:45 dflash2-k3-1019: edit probe
+[dflash2-k3-1019] edit: prompt ~2,222 tokens of code; decode median 301.5 tok/s
+== 16:46 dflash2-k3-1019: bench
+| Streaming decode, 1 user, structured / code / prose | 229.1 / 272.8 / 199.1 tok/s |
+| Decode, 2 users, aggregate, structured / code / prose | 347.2 / 368.1 / 313.6 tok/s |
+| Decode, 4 users, aggregate, structured / code / prose | 566.2 / 601.6 / 490.5 tok/s |
+| Decode, 8 users, aggregate, structured / code / prose | 876.5 / 950.5 / 736.5 tok/s |
+| Cold prefill | 4,820 tok/s |
+== 16:49 dflash2-k3-1019: done

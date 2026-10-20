@@ -1,0 +1,30 @@
+  1 user(s) structured   229.1 tok/s
+  1 user(s) code         272.8 tok/s
+  1 user(s) prose        199.1 tok/s
+  2 user(s) structured   347.2 tok/s
+  2 user(s) code         368.1 tok/s
+  2 user(s) prose        313.6 tok/s
+  4 user(s) structured   566.2 tok/s
+  4 user(s) code         601.6 tok/s
+  4 user(s) prose        490.5 tok/s
+  8 user(s) structured   876.5 tok/s
+  8 user(s) code         950.5 tok/s
+  8 user(s) prose        736.5 tok/s
+  prefill  21916 tokens  TTFT   4.54 s     4822 tok/s
+  prefill  21914 tokens  TTFT   4.54 s     4830 tok/s
+  prefill  21916 tokens  TTFT   4.54 s     4826 tok/s
+  prefill  31269 tokens  TTFT   6.50 s     4811 tok/s
+  prefill  31275 tokens  TTFT   6.50 s     4814 tok/s
+  prefill  31272 tokens  TTFT   6.50 s     4814 tok/s
+  prefill  34952 tokens  TTFT   7.25 s     4824 tok/s
+  prefill  34955 tokens  TTFT   7.25 s     4820 tok/s
+  prefill  34950 tokens  TTFT   7.25 s     4820 tok/s
+
+| | |
+|---|---:|
+| Streaming decode, 1 user, structured / code / prose | 229.1 / 272.8 / 199.1 tok/s |
+| Decode, 2 users, aggregate, structured / code / prose | 347.2 / 368.1 / 313.6 tok/s |
+| Decode, 4 users, aggregate, structured / code / prose | 566.2 / 601.6 / 490.5 tok/s |
+| Decode, 8 users, aggregate, structured / code / prose | 876.5 / 950.5 / 736.5 tok/s |
+| Cold prefill | 4,820 tok/s |
+| Cold prefill prompts (tokens) | 21,868, 31,224, 34,905 |

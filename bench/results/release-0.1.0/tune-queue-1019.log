@@ -1,0 +1,108 @@
+== 17:57 tune-base-1019: start (N=4 sched=[[1,4,4],[5,8,3]] extra='--prefix-match-unit 16' env='')
+(APIServer pid=1) INFO 10-19 22:57:54 [scheduler.py:348] Chunked prefill is enabled with max_num_batched_tokens=3460.
+(EngineCore pid=455) INFO 10-19 22:58:27 [core.py:133] Initializing a V1 LLM engine (v0.32.0rc1.dev249+g18305948a) with config: model='/models/Qwen3.8-Flash-Next-W4A16-Merlin', spe
+(Worker_TP1_EP1 pid=698) INFO 10-19 23:01:19 [interface.py:1096] Setting attention block size to 1616 tokens to ensure that attention page size is >= mamba page size.
+   pool kv_cache_size_tokens="1509680"
+   sanity: 222 tokens | ```python def fibonacci(n: int) -> int:     """     Return the n-th Fibonacci number using
+structured c=1 tokens=400 wall=1.84s agg=218 tok/s  ms=13.7 tok/step=3.01 pos=0.83 0.53 0.38 0.29
+code       c=1 tokens=400 wall=1.55s agg=258 tok/s  ms=15.4 tok/step=4.00 pos=0.93 0.80 0.70 0.57
+prose      c=1 tokens=400 wall=1.91s agg=210 tok/s  ms=13.7 tok/step=2.90 pos=0.76 0.53 0.35 0.27
+   [tune-base-1019] edit: prompt ~2,222 tokens of code; decode median 358.6 tok/s
+   [tune-base-1019] followup: turn 2 TTFT median 0.62 s (turn 1 3.80 s)
+   | Streaming decode, 1 user, structured / code / prose | 230.7 / 314.6 / 206.0 tok/s |
+   | Decode, 2 users, aggregate, structured / code / prose | 372.7 / 462.0 / 303.5 tok/s |
+   | Decode, 4 users, aggregate, structured / code / prose | 539.3 / 669.0 / 459.6 tok/s |
+   | Decode, 8 users, aggregate, structured / code / prose | 874.3 / 1000.7 / 745.9 tok/s |
+   | Cold prefill | 4,813 tok/s |
+   [tune-base-1019] long prompt 29,933 tokens, sent 3 s in, read in 6.27 s; decoder 1500 tokens in 12.9 s
+   [tune-base-1019] decoder tok/s  before  209.9   during prefill    9.6   after  221.1
+   [tune-base-1019] longest pause between chunks 0.68 s, 7.7 s into the run (during the prefill)
+== 18:06 tune-base-1019: done
+== 18:06 tune-k7-bs1680-1019: start (N=7 sched=none extra='--prefix-match-unit 16 --block-size 1680' env='')
+(APIServer pid=1) INFO 10-19 23:07:13 [scheduler.py:348] Chunked prefill is enabled with max_num_batched_tokens=3460.
+(EngineCore pid=455) INFO 10-19 23:07:45 [core.py:133] Initializing a V1 LLM engine (v0.32.0rc1.dev249+g18305948a) with config: model='/models/Qwen3.8-Flash-Next-W4A16-Merlin', spe
+   pool kv_cache_size_tokens="1403318"
+   sanity: 222 tokens | ```python def fibonacci(n: int) -> int:     """     Return the n-th Fibonacci number using
+structured c=1 tokens=400 wall=1.78s agg=224 tok/s  ms=15.3 tok/step=3.45 pos=0.79 0.44 0.31 0.26 0.23 0.22 0.22
+code       c=1 tokens=400 wall=1.30s agg=309 tok/s  ms=15.6 tok/step=4.88 pos=0.88 0.77 0.60 0.52 0.48 0.37 0.27
+prose      c=1 tokens=400 wall=2.12s agg=189 tok/s  ms=15.2 tok/step=2.90 pos=0.72 0.49 0.28 0.20 0.11 0.07 0.07
+   [tune-k7-bs1680-1019] edit: prompt ~2,222 tokens of code; decode median 500.5 tok/s
+   [tune-k7-bs1680-1019] followup: turn 2 TTFT median 0.50 s (turn 1 3.78 s)
+   | Streaming decode, 1 user, structured / code / prose | 242.0 / 356.7 / 204.8 tok/s |
+   | Decode, 2 users, aggregate, structured / code / prose | 378.6 / 486.8 / 294.1 tok/s |
+   | Decode, 4 users, aggregate, structured / code / prose | 536.1 / 704.6 / 431.0 tok/s |
+   | Decode, 8 users, aggregate, structured / code / prose | 732.9 / 999.9 / 592.5 tok/s |
+   | Cold prefill | 4,841 tok/s |
+== 18:15 tune-k7-bs1680-1019: done
+== 18:15 tune-k5-bs1680-1019: start (N=5 sched=none extra='--prefix-match-unit 16 --block-size 1680' env='')
+(APIServer pid=1) INFO 10-19 23:15:44 [scheduler.py:348] Chunked prefill is enabled with max_num_batched_tokens=3460.
+(EngineCore pid=456) INFO 10-19 23:16:16 [core.py:133] Initializing a V1 LLM engine (v0.32.0rc1.dev249+g18305948a) with config: model='/models/Qwen3.8-Flash-Next-W4A16-Merlin', spe
+   pool kv_cache_size_tokens="1465561"
+   sanity: 222 tokens | ```python def fibonacci(n: int) -> int:     """     Return the n-th Fibonacci number using
+structured c=1 tokens=400 wall=1.80s agg=222 tok/s  ms=14.2 tok/step=3.17 pos=0.83 0.50 0.33 0.27 0.25
+code       c=1 tokens=400 wall=1.33s agg=302 tok/s  ms=14.4 tok/step=4.40 pos=0.89 0.78 0.66 0.60 0.51
+prose      c=1 tokens=400 wall=1.87s agg=214 tok/s  ms=14.2 tok/step=3.05 pos=0.72 0.50 0.37 0.28 0.19
+   [tune-k5-bs1680-1019] edit: prompt ~2,222 tokens of code; decode median 410.7 tok/s
+   [tune-k5-bs1680-1019] followup: turn 2 TTFT median 0.50 s (turn 1 3.78 s)
+   | Streaming decode, 1 user, structured / code / prose | 235.8 / 323.4 / 207.4 tok/s |
+   | Decode, 2 users, aggregate, structured / code / prose | 358.0 / 466.2 / 316.1 tok/s |
+   | Decode, 4 users, aggregate, structured / code / prose | 526.3 / 684.9 / 441.3 tok/s |
+   | Decode, 8 users, aggregate, structured / code / prose | 795.9 / 1039.2 / 672.6 tok/s |
+   | Cold prefill | 4,844 tok/s |
+== 18:23 tune-k5-bs1680-1019: done
+== 18:23 tune-boundary-1019: start (N=4 sched=[[1,4,4],[5,8,3]] extra='--prefix-match-unit 16' env='VLLM_DFLASH_BOUNDARY_CACHE=1')
+(APIServer pid=1) INFO 10-19 23:23:57 [scheduler.py:348] Chunked prefill is enabled with max_num_batched_tokens=3460.
+(EngineCore pid=455) INFO 10-19 23:24:29 [core.py:133] Initializing a V1 LLM engine (v0.32.0rc1.dev249+g18305948a) with config: model='/models/Qwen3.8-Flash-Next-W4A16-Merlin', spe
+(Worker_TP0_EP0 pid=627) INFO 10-19 23:26:31 [interface.py:1096] Setting attention block size to 1616 tokens to ensure that attention page size is >= mamba page size.
+   pool kv_cache_size_tokens="1509680"
+   sanity: 262 tokens | ```python def fibonacci(n: int) -> int:     """     Return the n-th Fibonacci number using
+structured c=1 tokens=400 wall=1.75s agg=228 tok/s  ms=13.7 tok/step=3.15 pos=0.85 0.60 0.41 0.31
+code       c=1 tokens=400 wall=1.61s agg=249 tok/s  ms=15.2 tok/step=3.81 pos=0.93 0.80 0.62 0.49
+prose      c=1 tokens=400 wall=1.89s agg=212 tok/s  ms=13.6 tok/step=2.90 pos=0.76 0.53 0.36 0.26
+   [tune-boundary-1019] edit: prompt ~2,222 tokens of code; decode median 360.6 tok/s
+   [tune-boundary-1019] followup: turn 2 TTFT median 0.62 s (turn 1 3.80 s)
+   | Streaming decode, 1 user, structured / code / prose | 238.4 / 308.5 / 212.9 tok/s |
+   | Decode, 2 users, aggregate, structured / code / prose | 352.8 / 453.7 / 323.9 tok/s |
+   | Decode, 4 users, aggregate, structured / code / prose | 544.8 / 666.2 / 467.4 tok/s |
+   | Decode, 8 users, aggregate, structured / code / prose | 868.7 / 984.0 / 744.7 tok/s |
+   | Cold prefill | 4,811 tok/s |
+== 18:31 tune-boundary-1019: done
+== 18:31 tune-mb8192-1019: start (N=4 sched=[[1,4,4],[5,8,3]] extra='--prefix-match-unit 16' env='MAX_BATCHED=8192')
+(APIServer pid=1) INFO 10-19 23:32:12 [scheduler.py:348] Chunked prefill is enabled with max_num_batched_tokens=8192.
+(EngineCore pid=455) INFO 10-19 23:32:45 [core.py:133] Initializing a V1 LLM engine (v0.32.0rc1.dev249+g18305948a) with config: model='/models/Qwen3.8-Flash-Next-W4A16-Merlin', spe
+(Worker_TP1_EP1 pid=691) INFO 10-19 23:34:42 [interface.py:1096] Setting attention block size to 1616 tokens to ensure that attention page size is >= mamba page size.
+   pool kv_cache_size_tokens="1417664"
+   sanity: 222 tokens | ```python def fibonacci(n: int) -> int:     """     Return the n-th Fibonacci number using
+structured c=1 tokens=400 wall=1.72s agg=232 tok/s  ms=13.7 tok/step=3.20 pos=0.85 0.59 0.44 0.33
+code       c=1 tokens=400 wall=1.55s agg=258 tok/s  ms=15.2 tok/step=3.96 pos=0.95 0.79 0.65 0.56
+prose      c=1 tokens=400 wall=1.89s agg=212 tok/s  ms=13.6 tok/step=2.90 pos=0.73 0.52 0.37 0.28
+   [tune-mb8192-1019] edit: prompt ~2,222 tokens of code; decode median 360.4 tok/s
+   [tune-mb8192-1019] followup: turn 2 TTFT median 0.62 s (turn 1 3.62 s)
+   | Streaming decode, 1 user, structured / code / prose | 236.6 / 311.8 / 214.2 tok/s |
+   | Decode, 2 users, aggregate, structured / code / prose | 367.7 / 427.6 / 324.2 tok/s |
+   | Decode, 4 users, aggregate, structured / code / prose | 539.6 / 660.4 / 460.2 tok/s |
+   | Decode, 8 users, aggregate, structured / code / prose | 866.9 / 990.9 / 732.4 tok/s |
+   | Cold prefill | 5,116 tok/s |
+== 18:39 tune-mb8192-1019: done
+== 18:39 tune-fair384-1019: start (N=4 sched=[[1,4,4],[5,8,3]] extra='--prefix-match-unit 16 --prefill-chunk-with-decodes 384 --max-num-partial-prefills 2' env='')
+(APIServer pid=1) INFO 10-19 23:40:20 [scheduler.py:348] Chunked prefill is enabled with max_num_batched_tokens=3460.
+(EngineCore pid=455) INFO 10-19 23:40:54 [core.py:133] Initializing a V1 LLM engine (v0.32.0rc1.dev249+g18305948a) with config: model='/models/Qwen3.8-Flash-Next-W4A16-Merlin', spe
+(Worker_TP0_EP0 pid=754) INFO 10-19 23:42:50 [interface.py:1096] Setting attention block size to 1616 tokens to ensure that attention page size is >= mamba page size.
+   pool kv_cache_size_tokens="1509680"
+   sanity: 222 tokens | ```python def fibonacci(n: int) -> int:     """     Return the n-th Fibonacci number using
+structured c=1 tokens=400 wall=1.75s agg=229 tok/s  ms=13.6 tok/step=3.15 pos=0.87 0.60 0.40 0.28
+code       c=1 tokens=400 wall=1.53s agg=261 tok/s  ms=15.2 tok/step=4.00 pos=0.91 0.80 0.72 0.60
+prose      c=1 tokens=400 wall=1.87s agg=214 tok/s  ms=13.5 tok/step=2.92 pos=0.79 0.53 0.34 0.27
+   [tune-fair384-1019] edit: prompt ~2,222 tokens of code; decode median 360.6 tok/s
+   [tune-fair384-1019] followup: turn 2 TTFT median 0.62 s (turn 1 3.79 s)
+   | Streaming decode, 1 user, structured / code / prose | 231.5 / 309.2 / 216.2 tok/s |
+   | Decode, 2 users, aggregate, structured / code / prose | 364.3 / 448.6 / 313.2 tok/s |
+   | Decode, 4 users, aggregate, structured / code / prose | 544.6 / 679.3 / 465.8 tok/s |
+   | Decode, 8 users, aggregate, structured / code / prose | 847.8 / 908.6 / 689.8 tok/s |
+   | Cold prefill | 4,819 tok/s |
+   [tune-fair384-1019] long prompt 30,037 tokens, sent 3 s in, read in 22.72 s; decoder 1500 tokens in 28.0 s
+   [tune-fair384-1019] decoder tok/s  before  226.9   during prefill   12.9   after  230.8
+   [tune-fair384-1019] longest pause between chunks 0.25 s, 9.0 s into the run (during the prefill)
+== 18:48 tune-fair384-1019: done
+== 18:48 queue done; restoring serving
+== 18:53 serving: 200

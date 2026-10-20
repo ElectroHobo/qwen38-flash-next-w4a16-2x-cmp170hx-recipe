@@ -1,0 +1,49 @@
+[recipe-0.1.0-fresh-ram64] seed 1792458598, prefix 99,778 tokens, codes ['1095296', '1493689', '7923105']
+[recipe-0.1.0-fresh-ram64] flood: 18 x ~100,000 tokens in 367 s
+
+[recipe-0.1.0-fresh-ram64] row              TTFT s  total s  code  reply
+[recipe-0.1.0-fresh-ram64] cold              20.75    20.76  ok    'The access code for vault alpha is **1095296**.'
+[recipe-0.1.0-fresh-ram64] warm               0.56     0.58  ok    'The access code for vault bravo is **1493689**.'
+[recipe-0.1.0-fresh-ram64] evicted            0.89     0.90  ok    'The access code for vault charlie is 7923105.'
+[recipe-0.1.0-fresh-ram64] evicted-again      0.57     0.58  ok    'The access code for vault alpha is **1095296**.'
+[recipe-0.1.0-fresh-ram64] NOTE: evicted TTFT is near warm - either offload reloaded the prefix or the flood did not evict it. If the offload-off run reads near warm too, raise --flood-tokens
+
+[recipe-0.1.0-fresh-ram64] counter changes over the run:
+[recipe-0.1.0-fresh-ram64]   vllm:external_prefix_cache_hits_created +0
+[recipe-0.1.0-fresh-ram64]   vllm:external_prefix_cache_hits_total +99,120
+[recipe-0.1.0-fresh-ram64]   vllm:external_prefix_cache_queries_total +2,002,335
+[recipe-0.1.0-fresh-ram64]   vllm:kv_offload_cpu_allocation_size_bucket +6,596
+[recipe-0.1.0-fresh-ram64]   vllm:kv_offload_cpu_allocation_size_count +650
+[recipe-0.1.0-fresh-ram64]   vllm:kv_offload_cpu_allocation_size_sum +1,237
+[recipe-0.1.0-fresh-ram64]   vllm:kv_offload_load_bytes_created +1,792,458,989
+[recipe-0.1.0-fresh-ram64]   vllm:kv_offload_load_bytes_total +2,851,430,400
+[recipe-0.1.0-fresh-ram64]   vllm:kv_offload_load_size_bucket +2
+[recipe-0.1.0-fresh-ram64]   vllm:kv_offload_load_size_count +2
+[recipe-0.1.0-fresh-ram64]   vllm:kv_offload_load_size_created +1,792,458,989
+[recipe-0.1.0-fresh-ram64]   vllm:kv_offload_load_size_sum +2,851,430,400
+[recipe-0.1.0-fresh-ram64]   vllm:kv_offload_load_time_created +1,792,458,989
+[recipe-0.1.0-fresh-ram64]   vllm:kv_offload_load_time_total +1
+[recipe-0.1.0-fresh-ram64]   vllm:kv_offload_lookup_sync_delay_seconds_bucket +5,806
+[recipe-0.1.0-fresh-ram64]   vllm:kv_offload_lookup_sync_delay_seconds_count +530
+[recipe-0.1.0-fresh-ram64]   vllm:kv_offload_lookup_sync_delay_seconds_sum +0
+[recipe-0.1.0-fresh-ram64]   vllm:kv_offload_size_bucket +7,928
+[recipe-0.1.0-fresh-ram64]   vllm:kv_offload_size_count +1,302
+[recipe-0.1.0-fresh-ram64]   vllm:kv_offload_size_sum +57,116,344,320
+[recipe-0.1.0-fresh-ram64]   vllm:kv_offload_store_bytes_total +54,264,913,920
+[recipe-0.1.0-fresh-ram64]   vllm:kv_offload_store_size_bucket +7,926
+[recipe-0.1.0-fresh-ram64]   vllm:kv_offload_store_size_count +1,300
+[recipe-0.1.0-fresh-ram64]   vllm:kv_offload_store_size_sum +54,264,913,920
+[recipe-0.1.0-fresh-ram64]   vllm:kv_offload_store_time_total +13
+[recipe-0.1.0-fresh-ram64]   vllm:kv_offload_tiering_chunk_hits_created +1,792,458,989
+[recipe-0.1.0-fresh-ram64]   vllm:kv_offload_tiering_chunk_hits_total +65
+[recipe-0.1.0-fresh-ram64]   vllm:kv_offload_tiering_chunk_queries_total +84
+[recipe-0.1.0-fresh-ram64]   vllm:kv_offload_tiering_lookup_sync_delay_seconds_bucket +1,008
+[recipe-0.1.0-fresh-ram64]   vllm:kv_offload_tiering_lookup_sync_delay_seconds_count +84
+[recipe-0.1.0-fresh-ram64]   vllm:kv_offload_tiering_lookup_sync_delay_seconds_sum +0
+[recipe-0.1.0-fresh-ram64]   vllm:kv_offload_total_bytes_total +57,116,344,320
+[recipe-0.1.0-fresh-ram64]   vllm:kv_offload_total_time_total +14
+[recipe-0.1.0-fresh-ram64]   vllm:prefix_cache_hits_created +0
+[recipe-0.1.0-fresh-ram64]   vllm:prefix_cache_hits_total +198,240
+[recipe-0.1.0-fresh-ram64]   vllm:prefix_cache_queries_total +2,200,575
+[recipe-0.1.0-fresh-ram64]   vllm:request_num_preemptions_bucket +176
+[recipe-0.1.0-fresh-ram64]   vllm:request_num_preemptions_count +22

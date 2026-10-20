@@ -27,6 +27,12 @@ references:
       - name: halt95
     url: "https://huggingface.co/halt95/Qwen3.8-Flash-Next-W4A16-Merlin"
     notes: "The checkpoint, revision cec53e9f90e5995b81691604ec0b32191debf797."
+  - type: data
+    title: "Qwen3.8-Flash-Next-DFlash2"
+    authors:
+      - name: "inco.ai"
+    url: "https://huggingface.co/incoai/Qwen3.8-Flash-Next-DFlash2"
+    notes: "The DFlash 2 drafter, revision a22a1744e85c17364dcc54a6a420af7135d4c7f6; Apache-2.0."
   - type: software
     title: "Qwen3.8-Flash-Next"
     authors:

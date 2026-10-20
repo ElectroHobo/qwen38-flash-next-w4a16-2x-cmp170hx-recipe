@@ -1,0 +1,19 @@
+== 19:09 tune-k7sched-1019: start (N=7 sched=[[1,2,7],[3,4,5],[5,8,3]] extra='--prefix-match-unit 16 --block-size 1680' env='')
+(APIServer pid=1) INFO 10-20 00:09:38 [scheduler.py:348] Chunked prefill is enabled with max_num_batched_tokens=3460.
+(EngineCore pid=455) INFO 10-20 00:10:10 [core.py:133] Initializing a V1 LLM engine (v0.32.0rc1.dev249+g18305948a) with config: model='/models/Qwen3.8-Flash-Next-W4A16-Merlin', spe
+   pool kv_cache_size_tokens="1398101"
+   sanity: 262 tokens | ```python def fibonacci(n: int) -> int:     """     Return the n-th Fibonacci number using
+structured c=1 tokens=400 wall=1.80s agg=223 tok/s  ms=15.5 tok/step=3.48 pos=0.77 0.46 0.32 0.29 0.23 0.23 0.22
+code       c=1 tokens=400 wall=1.18s agg=340 tok/s  ms=15.9 tok/step=5.48 pos=0.92 0.82 0.73 0.67 0.56 0.47 0.34
+prose      c=1 tokens=400 wall=1.77s agg=226 tok/s  ms=15.5 tok/step=3.54 pos=0.76 0.53 0.37 0.30 0.25 0.19 0.13
+   [tune-k7sched-1019] edit: prompt ~2,222 tokens of code; decode median 496.2 tok/s
+   [tune-k7sched-1019] followup: turn 2 TTFT median 0.49 s (turn 1 3.78 s)
+   | Streaming decode, 1 user, structured / code / prose | 239.4 / 352.8 / 203.9 tok/s |
+   | Decode, 2 users, aggregate, structured / code / prose | 384.9 / 485.2 / 308.7 tok/s |
+   | Decode, 4 users, aggregate, structured / code / prose | 525.8 / 685.9 / 456.4 tok/s |
+   | Decode, 8 users, aggregate, structured / code / prose | 847.2 / 986.2 / 728.4 tok/s |
+   | Cold prefill | 4,832 tok/s |
+   [tune-k7sched-1019] long prompt 30,117 tokens, sent 3 s in, read in 6.23 s; decoder 1500 tokens in 12.7 s
+   [tune-k7sched-1019] decoder tok/s  before  230.1   during prefill    8.2   after  216.3
+   [tune-k7sched-1019] longest pause between chunks 0.69 s, 7.2 s into the run (during the prefill)
+== 19:18 tune-k7sched-1019: done

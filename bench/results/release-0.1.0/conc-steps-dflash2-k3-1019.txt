@@ -1,0 +1,18 @@
+structured c=1 tokens=400 wall=2.03s agg=197 tok/s | engine steps=146 ms/step=13.9 drafts=145 (=0.99/step) accepted/draft=59% tok/req-step=2.76 | req walls: 2.03 | per-pos: 0.81 0.54 0.41
+structured c=1 tokens=400 wall=2.00s agg=200 tok/s | engine steps=143 ms/step=14.0 drafts=142 (=0.99/step) accepted/draft=60% tok/req-step=2.82 | req walls: 2.00 | per-pos: 0.82 0.56 0.44
+code       c=1 tokens=400 wall=1.70s agg=235 tok/s | engine steps=119 ms/step=14.3 drafts=118 (=0.99/step) accepted/draft=80% tok/req-step=3.39 | req walls: 1.70 | per-pos: 0.92 0.82 0.65
+code       c=1 tokens=400 wall=1.76s agg=228 tok/s | engine steps=124 ms/step=14.2 drafts=123 (=0.99/step) accepted/draft=76% tok/req-step=3.25 | req walls: 1.76 | per-pos: 0.89 0.77 0.60
+prose      c=1 tokens=400 wall=2.21s agg=181 tok/s | engine steps=160 ms/step=13.8 drafts=159 (=0.99/step) accepted/draft=51% tok/req-step=2.52 | req walls: 2.21 | per-pos: 0.73 0.46 0.34
+prose      c=1 tokens=400 wall=2.19s agg=182 tok/s | engine steps=159 ms/step=13.8 drafts=158 (=0.99/step) accepted/draft=51% tok/req-step=2.53 | req walls: 2.19 | per-pos: 0.73 0.49 0.31
+structured c=2 tokens=800 wall=2.39s agg=335 tok/s | engine steps=136 ms/step=17.6 drafts=265 (=1.95/step) accepted/draft=67% tok/req-step=3.02 | req walls: 2.34 2.39 | per-pos: 0.89 0.64 0.50
+structured c=2 tokens=800 wall=2.53s agg=317 tok/s | engine steps=147 ms/step=17.2 drafts=288 (=1.96/step) accepted/draft=59% tok/req-step=2.78 | req walls: 2.50 2.53 | per-pos: 0.83 0.53 0.42
+code       c=2 tokens=800 wall=2.21s agg=362 tok/s | engine steps=121 ms/step=18.3 drafts=235 (=1.94/step) accepted/draft=80% tok/req-step=3.40 | req walls: 2.16 2.21 | per-pos: 0.90 0.81 0.69
+code       c=2 tokens=800 wall=2.22s agg=360 tok/s | engine steps=123 ms/step=18.1 drafts=237 (=1.93/step) accepted/draft=79% tok/req-step=3.38 | req walls: 2.15 2.22 | per-pos: 0.90 0.79 0.68
+prose      c=2 tokens=800 wall=2.71s agg=295 tok/s | engine steps=157 ms/step=17.3 drafts=308 (=1.96/step) accepted/draft=53% tok/req-step=2.60 | req walls: 2.71 2.69 | per-pos: 0.78 0.52 0.31
+prose      c=2 tokens=800 wall=2.68s agg=298 tok/s | engine steps=156 ms/step=17.2 drafts=303 (=1.94/step) accepted/draft=55% tok/req-step=2.64 | req walls: 2.68 2.62 | per-pos: 0.76 0.51 0.37
+structured c=4 tokens=1600 wall=3.19s agg=502 tok/s | engine steps=145 ms/step=22.0 drafts=563 (=3.88/step) accepted/draft=61% tok/req-step=2.84 | req walls: 3.09 3.17 3.19 3.17 | per-pos: 0.83 0.57 0.44
+structured c=4 tokens=1600 wall=3.23s agg=495 tok/s | engine steps=147 ms/step=22.0 drafts=572 (=3.89/step) accepted/draft=60% tok/req-step=2.80 | req walls: 3.22 3.19 3.23 3.19 | per-pos: 0.83 0.55 0.42
+code       c=4 tokens=1600 wall=2.67s agg=598 tok/s | engine steps=125 ms/step=21.4 drafts=478 (=3.82/step) accepted/draft=78% tok/req-step=3.35 | req walls: 2.63 2.67 2.66 2.54 | per-pos: 0.91 0.80 0.64
+code       c=4 tokens=1600 wall=2.63s agg=608 tok/s | engine steps=123 ms/step=21.4 drafts=467 (=3.80/step) accepted/draft=81% tok/req-step=3.43 | req walls: 2.49 2.60 2.57 2.63 | per-pos: 0.92 0.82 0.69
+prose      c=4 tokens=1600 wall=3.32s agg=482 tok/s | engine steps=162 ms/step=20.5 drafts=596 (=3.68/step) accepted/draft=56% tok/req-step=2.68 | req walls: 3.15 3.08 3.17 3.32 | per-pos: 0.78 0.53 0.38
+prose      c=4 tokens=1600 wall=3.37s agg=475 tok/s | engine steps=162 ms/step=20.8 drafts=612 (=3.78/step) accepted/draft=54% tok/req-step=2.61 | req walls: 3.28 3.23 3.37 3.25 | per-pos: 0.76 0.50 0.35

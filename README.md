@@ -4,17 +4,17 @@
 ![release](https://img.shields.io/badge/release-0.1.0-2ea44f)
 
 **Qwen3.8-Flash-Next (125B MoE) on two CMP 170HX cards with the full
-262,144-token context: 206 / 246 / 186 tok/s for one user (structured / code /
-prose), 821 / 827 / 692 tok/s across eight, 4,527 tok/s cold prefill and a
-1,489,261-token KV pool. INT4 experts, the n-gram table in host RAM, the whole
-decode step in one CUDA graph, native MTP speculation, bf16 KV cache — and an
-optional host-RAM tier that brings an evicted 100k-token context back in 0.7 s
-instead of re-reading it in 22 s.**
+262,144-token context: 253 / 349 / 203 tok/s for one user (structured / code /
+prose), 497 tok/s editing code, 842 / 992 / 727 tok/s across eight, 4,729 tok/s
+cold prefill and a 1,398,101-token KV pool. INT4 experts, the n-gram table in
+host RAM, the whole decode step in one CUDA graph, inco.ai's DFlash 2 drafter,
+bf16 KV cache — and an optional host-RAM tier that brings an evicted
+100k-token context back in under a second instead of re-reading it in 21 s.**
 
 Serve [halt95/Qwen3.8-Flash-Next-W4A16-Merlin](https://huggingface.co/halt95/Qwen3.8-Flash-Next-W4A16-Merlin)
 on two NVIDIA CMP 170HX cards with [Morrowmake's vllm-cmp170hx](https://github.com/Morrowmake/vllm-cmp170hx)
-fork of vLLM: an OpenAI-compatible API with the model's full context, native
-MTP speculative decoding, vision, reasoning and tool calls. The engine runs
+fork of vLLM: an OpenAI-compatible API with the model's full context, DFlash 2
+speculative decoding, vision, reasoning and tool calls. The engine runs
 only in a container pinned by digest. One command from a fresh clone, after
 the [one-time host setup](#one-time-host-setup):
 
@@ -37,8 +37,9 @@ not both.
 > halt95, whose checkpoint it serves on an engine they did not build it for.
 > It runs on Morrowmake's engine and image and descends from their
 > [Qwen3.8-Flash-Next EXL3 recipe](https://github.com/Morrowmake/qwen38-flash-next-cmp170hx-recipe);
-> what is ours is the checkpoint choice, three configuration changes, the KV
-> offload wiring, the benchmarks and the measurements. **Contact for issues:
+> what is ours is the checkpoint choice, three configuration changes, the
+> DFlash 2 support (two engine files in [`patches/`](patches/) mounted over the
+> image's), the KV offload wiring, the benchmarks and the measurements. **Contact for issues:
 > @ElectroHobo, in
 > [this repository's issues](https://github.com/ElectroHobo/qwen38-flash-next-w4a16-cmp170hx-recipe/issues)** —
 > not Morrowmake's. Made to the shape of Morrowmake's
@@ -73,7 +74,21 @@ loads through vLLM's ordinary loader (`--load-format auto`), the table is
 offloaded to host RAM (`cpu_offload: true`), and full CUDA graphs are allowed
 and made the default. Plus the KV offload block, carried over from our
 [MiMo recipe](https://github.com/ElectroHobo/mimo-v26-flash-cmp170hx-recipe)
-on the same engine. Everything else is theirs.
+on the same engine, and the DFlash 2 drafter below. Everything else is theirs.
+
+### The drafter: DFlash 2
+
+The checkpoint carries its own MTP draft head, and that is what first ran
+here. [inco.ai's DFlash 2 drafter](https://huggingface.co/incoai/Qwen3.8-Flash-Next-DFlash2)
+for this model drafts a whole block in one pass instead of running a head once
+per draft, so more drafts cost little. Morrowmake's engine already has the
+DFlash 2 speculator; the model code did not let a drafter attach, and two
+engine files in [`patches/`](patches/) add that (48 lines; mounted over the
+image's, which is otherwise used as released). With seven drafts for one or two
+requests, five for three or four and three beyond, it is **43 % faster than MTP
+on code for one user and 80 % faster editing code**, with the same quality. The
+port and every measurement are in [docs/results.md](docs/results.md),
+"DFlash 2". `SPEC_MODE=mtp` runs the MTP head on the unmodified image.
 
 ## One-time host setup
 
@@ -115,10 +130,11 @@ Pick the cards with `CUDA_VISIBLE_DEVICES` (two distinct nvidia-smi numbers).
 | | |
 |---|---|
 | Engine | [Morrowmake/vllm-cmp170hx](https://github.com/Morrowmake/vllm-cmp170hx/tree/18305948acba3f4c4d912cdd56f2202d2ebd94e8) at `18305948acba3f4c4d912cdd56f2202d2ebd94e8` |
-| Image | `ghcr.io/morrowmake/vllm-cmp170hx@sha256:5b45c4d6feafefe2eba962375b0a9a0b64fd22b9e05abb4d1966f14a32a2db79`, Morrowmake's release image for their Qwen EXL3 recipe, used as released. The first start compiles kernels (about 15 minutes), later starts take about 5 |
+| Image | `ghcr.io/morrowmake/vllm-cmp170hx@sha256:5b45c4d6feafefe2eba962375b0a9a0b64fd22b9e05abb4d1966f14a32a2db79`, Morrowmake's release image for their Qwen EXL3 recipe, used as released apart from the two mounted files. The first start compiles kernels (about 17 minutes), later starts take about 5 |
 | Checkpoint | `halt95/Qwen3.8-Flash-Next-W4A16-Merlin`, revision `cec53e9f90e5995b81691604ec0b32191debf797` (weights unchanged since 2026-09-08 per the card) |
 | Precision | routed experts INT4 g128 (Intel AutoRound), Gated DeltaNet projections INT8, attention / norms / embeddings / lm_head / shared expert / vision BF16, n-gram table FP8 in host RAM, **KV cache BF16**, indexer cache BF16 |
-| Speculation | native MTP head (INT4-packed in the checkpoint), 3 draft tokens |
+| Drafter | [incoai/Qwen3.8-Flash-Next-DFlash2](https://huggingface.co/incoai/Qwen3.8-Flash-Next-DFlash2), revision `a22a1744e85c17364dcc54a6a420af7135d4c7f6` (Apache-2.0, 1.1 GiB): 7 drafts for one or two requests, 5 for three or four, 3 beyond. Alternative: the checkpoint's MTP head (`SPEC_MODE=mtp`), 3 drafts |
+| Engine patches | two files in [`patches/`](patches/), mounted read-only over the image's in dflash mode: the drafter capture hook and the speculation-method check |
 | CUDA graphs | `FULL_AND_PIECEWISE`: the decode step captured whole |
 
 halt95 built this checkpoint for four RTX 3090s on their own vLLM patches, with
@@ -136,22 +152,29 @@ What the container runs with the defaults (`DRY=1 ./start.sh` prints it):
 --max-model-len 262144 --gpu-memory-utilization 0.95 --max-num-seqs 8
 --max-num-batched-tokens 3460 --long-prefill-token-threshold 0
 --reasoning-parser qwen3 --enable-auto-tool-choice --tool-call-parser qwen3_coder
---prefix-match-unit 64 --compilation-config '{"cudagraph_mode":"FULL_AND_PIECEWISE"}'
---speculative-config '{"method":"mtp","num_speculative_tokens":3,"disable_eagle_block_drop":true}'`,
+--prefix-match-unit 16 --block-size 1680
+--compilation-config '{"cudagraph_mode":"FULL_AND_PIECEWISE"}'
+--speculative-config '{"method":"dflash","model":"/drafter","num_speculative_tokens":7,"num_speculative_tokens_per_batch_size":[[1,2,7],[3,4,5],[5,8,3]]}'`,
 with `KV_OFFLOAD_GB` adding `--kv-transfer-config` for the `OffloadingConnector`
-(`TieringOffloadingSpec`). Environment: `VLLM_USE_BREAKABLE_CUDAGRAPH=1`,
+(`TieringOffloadingSpec`) and `"disable_eagle_block_drop":true` to the
+speculative config, which offload needs with a drafter (vLLM #52735). The
+drafter is mounted at `/drafter` and the two files from `patches/` over
+`/opt/vllm-src/vllm/models/qwen4_exp/nvidia/model.py` and
+`/opt/vllm-src/vllm/model_executor/models/config.py`. Environment: `VLLM_USE_BREAKABLE_CUDAGRAPH=1`,
 `VLLM_QWEN4_QSA_TOPK_CANONICAL=1`, `VLLM_CUSTOM_ALLREDUCE_FLAGS=1`,
 `VLLM_THIN_GEMM=1`, `VLLM_THIN_GEMM_GLUON=1`, `VLLM_FLA_AUTOTUNE_SKIP_SPILLING=1`,
 `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:False`, and after the P2P check
 passes `VLLM_CUSTOM_ALLREDUCE_PCIE_P2P=1` with `NCCL_P2P_LEVEL=SYS`;
 `CUDA_DEVICE_ORDER=PCI_BUS_ID`. Against Morrowmake's Qwen recipe the differences
 are `--load-format auto` (theirs: `exl3`), `cpu_offload: true` (theirs:
-`false`), `FULL_AND_PIECEWISE` (theirs: `PIECEWISE`) and the optional KV
-offload; everything else is their default.
+`false`), `FULL_AND_PIECEWISE` (theirs: `PIECEWISE`), the DFlash 2 drafter with
+its schedule, block size 1680 and prefix-match unit 16 (theirs: MTP, 3 drafts,
+64), and the optional KV offload; everything else is their default.
 
 ## Headline numbers
 
-Measured 2026-10-19 on 2× CMP 170HX, 74 SMs per card, P2P on, recipe defaults,
+Measured 2026-10-19 from a fresh clone of this repository on 2× CMP 170HX,
+74 SMs per card, P2P on, recipe defaults with `KV_OFFLOAD_GB=64`,
 262,144-token context, 180 W per card and PCIe x16 links, under the protocol
 Morrowmake's recipes use (MiaAI-Lab's: 400 tokens, temperature 0, thinking
 off; one user is the median of five streaming runs, two to eight users the
@@ -160,18 +183,18 @@ median aggregate of three runs). Raw files:
 
 | | This recipe | Morrowmake's EXL3 recipe, their published figures |
 |---|---:|---:|
-| **1 user** · structured / code / prose | **206.4 / 245.6 / 186.2** | 152.8 / 152.6 / 118.3 |
-| **2 users, total** | 327.3 / 361.9 / 277.0 | 236.5 / 265.0 / 204.6 |
-| **4 users, total** | 506.9 / 541.1 / 452.1 | 357.1 / 458.6 / 327.2 |
-| **8 users, total** | **820.7 / 826.6 / 692.4** | 588.2 / 674.7 / 489.9 |
-| **Prompt reading** (cold prefill) | **4,527** | 2,651 |
-| **KV pool** (tokens) | **1,489,261** | 1,044,325 |
-| Decode step, one user | 15.2 ms | — |
+| **1 user** · structured / code / prose | **253.2 / 348.9 / 203.2** | 152.8 / 152.6 / 118.3 |
+| **2 users, total** | 381.1 / 483.8 / 298.1 | 236.5 / 265.0 / 204.6 |
+| **4 users, total** | 515.2 / 688.6 / 455.8 | 357.1 / 458.6 / 327.2 |
+| **8 users, total** | **842.2 / 992.1 / 726.7** | 588.2 / 674.7 / 489.9 |
+| **Prompt reading** (cold prefill) | **4,729** | 2,651 |
+| **KV pool** (tokens) | **1,398,101** | 1,044,325 |
+| Code editing, one user (`bench/agent_probes.py edit`) | 497 | — |
 
 Their column is from their README, measured on their box with a current CPU;
 the EXL3 recipe on *our* box runs at 55 to 70 tok/s for one user. Different
-weights too: EXL3 at 5.05 bpw against INT4 experts here. Quality has not been
-scored against each other yet ([docs/known-limits.md](docs/known-limits.md)).
+weights too: EXL3 at 5.05 bpw against INT4 experts here, and a different
+drafter.
 
 ### Other two-card recipes
 
@@ -181,24 +204,25 @@ re-run by us.
 
 | | This recipe (Morrowmake's engine, TP2, x16 links, Broadwell host) | [AlexBrandes](https://github.com/AlexBrandes/cmp170hx-qwen38-flash-next) (own vLLM 0.30.0 fork, PP2, Intel W4A16, table on NVMe, x4 links, Core Ultra 5 host) | [mannydelrio](https://github.com/mannydelrio/qwen38-flash-next-2x-cmp170hx) (vLLM, AWQ g32 uncensored, 4-bit table on SSD, x4 links, Ryzen 5 host, 16 GB RAM) |
 |---|---:|---:|---:|
-| 1 user · structured / code / prose | 206.4 / **245.6** / **186.2** | **250.8** / 226.2 / 157.4 | 192.4 / 177.8 / 145.4 |
-| 2 users, total | 327.3 / 361.9 / **277.0** | **406.1** / **362.9** / 212.2 | 324.5 / 242.8 / 238.9 |
-| 4 users, total | 506.9 / 541.1 / **452.1** | **697.4** / **560.2** / 384.8 | 598.2 / 446.2 / 399.2 |
-| 8 users, total | 820.7 / 826.6 / **692.4** | **999.5** / **840.4** / 566.8 | 986.4 / 734.2 / 619.6 |
-| Cold prefill | 4,527 | **6,300–7,100** (4k–64k prompts) | 7,006 |
+| 1 user · structured / code / prose | **253.2** / **348.9** / **203.2** | 250.8 / 226.2 / 157.4 | 192.4 / 177.8 / 145.4 |
+| 2 users, total | 381.1 / **483.8** / **298.1** | **406.1** / 362.9 / 212.2 | 324.5 / 242.8 / 238.9 |
+| 4 users, total | 515.2 / **688.6** / **455.8** | **697.4** / 560.2 / 384.8 | 598.2 / 446.2 / 399.2 |
+| 8 users, total | 842.2 / **992.1** / **726.7** | **999.5** / 840.4 / 566.8 | 986.4 / 734.2 / 619.6 |
+| Cold prefill | 4,729 | **6,300–7,100** (4k–64k prompts) | 7,006 |
 
-So this recipe leads on prose at every user count and on code for one user,
-AlexBrandes leads on structured output at every count and on code at two or
-more users, and both of the others read prompts 40 to 55 % faster. Different
+So this recipe leads on code and prose at every user count and is level on
+structured output for one user; AlexBrandes leads on structured output from two
+users up, and both of the others read prompts 33 to 50 % faster. Different
 engines, checkpoints and link widths; the one thing this recipe has that they
 do not is the host-RAM table with the whole step in one CUDA graph, which is
-what makes it fast on an old CPU, and the KV offload tier. If prefill speed or
+what makes it fast on an old CPU, the DFlash 2 drafter and the KV offload tier. If prefill speed or
 structured output is what you serve, read theirs too.
 
 | Other measurements | Value |
 |---|---|
-| Quality (thinking on, `reasoning_effort` medium, temperature 0.6, 16,000-token budget) | **HumanEval 161/164, GSM8K 199/200** (first 200 problems), no reply cut off |
-| KV offload, 64 GiB RAM tier | a 100k-token context evicted by 1.8M tokens of other traffic comes back in **0.68 s** (22.0 s without the tier); content checked correct |
+| Quality (thinking on, `reasoning_effort` medium, temperature 0.6, 16,000-token budget) | **HumanEval 163/164, GSM8K 197/200** (first 200 problems), no reply cut off |
+| KV offload, 64 GiB RAM tier | a 100k-token context evicted by 1.8M tokens of other traffic comes back in **0.89 s** (21–22 s without the tier); content checked correct |
+| Follow-up turn | the second question in an 18.7k-token conversation starts in 0.30 s (the first in 4.0 s) |
 | KV offload, NVMe tier behind a 16 GiB RAM tier | the same reload from disk in **1.85 s** |
 | 100k-token context | prompt read in 21.9 s; decode after it 177 tok/s |
 | FP8 KV cache (not the default) | pool 2,578,229 tokens (+73 %), one-user decode −8 to −10 %, answers shift |
@@ -247,10 +271,11 @@ run); a prefix assignment beats `.env` for one run
 | `KV_OFFLOAD_DIR` | unset | a disk tier behind the RAM tier (needs `KV_OFFLOAD_GB`); write-through, never pruned — give it a volume of its own |
 | `GRAPH_MODE` | `FULL_AND_PIECEWISE` | `PIECEWISE` is the EXL3 recipe's mode and is ~3× slower per step on an old CPU |
 | `P2P` | `auto` | `auto` (content-checked), `off`, `force` |
-| `SPEC_MODE` | `mtp` | `mtp` or `none` (no speculation; set `BOOT_CHECK=0`, the startup check expects drafting) |
-| `SPEC_N` | `3` | MTP draft tokens per step |
+| `SPEC_MODE` | `dflash` | `dflash` (inco.ai's DFlash 2 drafter, two engine files mounted), `mtp` (the checkpoint's MTP head, unmodified image) or `none` (no speculation; set `BOOT_CHECK=0`, the startup check expects drafting) |
+| `SPEC_N` | `7` (dflash) / `3` (mtp) | draft tokens per step; at most 7 for dflash |
+| `DRAFTER_REPO` / `DRAFTER_REVISION` | inco.ai's, pinned | the DFlash 2 drafter to download, next to the checkpoint in `MODELS_DIR` |
 | `LOCAL_ARGMAX` | `0` | `1`: per-card draft argmax, same drafts |
-| `SPEC_SCHEDULE` | empty | draft count by batch size, e.g. `[[1,2,4],[3,8,3]]` with `SPEC_N=4`; not a tested serving default |
+| `SPEC_SCHEDULE` | `[[1,2,7],[3,4,5],[5,8,3]]` (dflash) / empty (mtp) | draft count by number of requests; `SPEC_SCHEDULE=` for `SPEC_N` drafts at every count |
 | `MAX_SEQS` | `8` | concurrent sequences |
 | `MAX_BATCHED` | `3460` | tokens per scheduler step |
 | `REASONING_PARSER` / `TOOL_PARSER` | `qwen3` / `qwen3_coder` | output parsers |
@@ -308,7 +333,8 @@ attribution.
 - **MiaAI-Lab** — the benchmark protocol and category prompts (from their DGX
   Spark kits, AGPL-3.0; the prompts are used here as data, the harness is our own).
 - **inco.ai** — the [DFlash 2 drafter](https://huggingface.co/incoai/Qwen3.8-Flash-Next-DFlash2)
-  for this model (Apache-2.0), documented here as the next step, not yet used.
+  for this model (Apache-2.0) that this recipe drafts with, and the capture
+  patch shipped with it that says what the drafter was trained on.
 
 If this recipe helps you, credit the people above and link their work.
 Citation metadata for this repository: [`CITATION.cff`](CITATION.cff).

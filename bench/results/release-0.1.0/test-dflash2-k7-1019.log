@@ -1,0 +1,11 @@
+== 16:53 dflash2-k7-1019: start (dflash, 7 drafts)
+== 16:56 dflash2-k7-1019: start.sh exit 0
+not healthy
+(EngineCore pid=455) ERROR 10-19 21:56:09 [core.py:1510]     raise RuntimeError(
+(EngineCore pid=455) ERROR 10-19 21:56:09 [core.py:1510] RuntimeError: Worker failed with error 'QSA ring capacity 12 must divide the attention block size 1648', please check the stack trace above for the root cause
+Traceback (most recent call last):
+    raise RuntimeError(
+RuntimeError: Worker failed with error 'QSA ring capacity 12 must divide the attention block size 1648', please check the stack trace above for the root cause
+Traceback (most recent call last):
+    raise RuntimeError(
+RuntimeError: Engine core initialization failed. See root cause above. Failed core proc(s): {}

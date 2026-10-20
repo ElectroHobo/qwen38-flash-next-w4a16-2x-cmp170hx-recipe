@@ -1,0 +1,24 @@
+{
+ "prompt_code_tokens": 2222,
+ "runs": [
+  {
+   "ttft_s": 0.5168681710056262,
+   "decode_tok_s": 411.0061939518461,
+   "completion_tokens": 2227,
+   "renamed": true
+  },
+  {
+   "ttft_s": 0.49414278699987335,
+   "decode_tok_s": 410.2326055571143,
+   "completion_tokens": 2227,
+   "renamed": true
+  },
+  {
+   "ttft_s": 0.4930570440046722,
+   "decode_tok_s": 410.6537605264774,
+   "completion_tokens": 2227,
+   "renamed": true
+  }
+ ],
+ "decode_median": 410.6537605264774
+}

@@ -19,12 +19,13 @@
    whether other machines may connect (`HOST=0.0.0.0` and an `API_KEY`). The
    first run copies the example for you if you skip this.
 3. `./start.sh`. It checks the host (read-only), pulls the engine image by
-   digest, downloads the checkpoint at the pinned revision (resumable), starts
+   digest, downloads the checkpoint and the DFlash 2 drafter at their pinned
+   revisions (resumable), starts
    the server detached and waits for `/health`, then sends two requests to
    confirm it drafts. The first start compiles kernels and takes about 15
    minutes; later starts about 5. Watch with `./start.sh logs`.
 4. `./start.sh status` shows the server, `/health` and the KV pool line
-   (`GPU KV cache size: 1,489,261 tokens` with the defaults).
+   (`GPU KV cache size: 1,398,101 tokens` with the defaults).
 
 `DRY=1 ./start.sh` prints every check, the environment the container would get
 and the launch command, and changes nothing.
@@ -108,12 +109,18 @@ Run them on an idle server; `cmp_recipe_bench.py` takes about five minutes,
 - `GRAPH_MODE=PIECEWISE` restores Morrowmake's recipe's graph mode. It is about
   3× slower per step on an old CPU; on a current CPU the gap is smaller. There
   is no reason to set it other than to see the difference.
-- `SPEC_N` sets the draft count (default 3). Two drafts cost almost nothing in
-  pool and lose a little on code; one draft is the largest pool. See the sweep
-  in `results.md`.
-- `MAX_BATCHED` (3460) is the prefill slice per scheduler step; a smaller slice
-  keeps a decoding user more responsive while a long prompt is read, for a
-  slower read. The engine also has `--prefill-chunk-with-decodes` (via
+- The drafter: `SPEC_MODE=dflash` (default) runs inco.ai's DFlash 2 drafter
+  with the two engine files in `patches/` mounted; `SPEC_MODE=mtp` runs the
+  checkpoint's own MTP head on the image as released (about 30 % slower on
+  code, the same quality); `SPEC_MODE=none` drafts nothing (set `BOOT_CHECK=0`).
+- `SPEC_N` and `SPEC_SCHEDULE` set the draft count. With DFlash 2 the default is
+  7, scheduled 7 / 5 / 3 by the number of requests (`[[1,2,7],[3,4,5],[5,8,3]]`);
+  set `SPEC_SCHEDULE=` for a fixed count. With MTP the default is 3. Both sweeps
+  are in `results.md`.
+- `MAX_BATCHED` (3460) is the prefill slice per scheduler step; 8192 reads
+  prompts 6 % faster for a 6 % smaller pool, a smaller slice keeps a decoding
+  user more responsive while a long prompt is read, for a slower read. The
+  engine also has `--prefill-chunk-with-decodes` (via
   `EXTRA_ARGS`), not yet measured on this build.
 - FP8 KV cache: edit `QWEN_DEFAULT_KV_CACHE_DTYPE` in `serve.sh` to `fp8`. A
   73 % larger pool, 8 to 10 % slower decode, answers shift. Not the default.
