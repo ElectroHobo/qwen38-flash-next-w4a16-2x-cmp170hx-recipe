@@ -269,7 +269,7 @@ structured output is what you serve, read theirs too.
 | Quality (thinking on, `reasoning_effort` medium, temperature 0.6, 16,000-token budget) | **HumanEval 162/164, GSM8K 198/200** (first 200 problems) with DFlash 2, 162/164 and 197/200 with MTP, from the fresh clone; 0.1.0 scored 163/164 and 197/200 |
 | KV offload, 64 GiB RAM tier (0.1.0) | a 100k-token context evicted by 1.8M tokens of other traffic comes back in **0.89 s** (21–22 s without the tier); content checked correct |
 | Follow-up turn | the second question in an 18.7k-token conversation starts in 0.42 s with DFlash 2, 0.25 s with MTP (the first in 3.9–4.1 s) |
-| Two servers, one table | this recipe and the one-card one on one host: 48 GiB of host shared memory together, against 64 GiB for either alone without `PLE_SHARED_DIR` |
+| Two servers, one table | this recipe and the one-card one on one host: 49 GiB of host shared memory together, against 64 GiB for either alone without `PLE_SHARED_DIR`; one user here 241.0 / 347.0 / 196.0 with both up |
 | KV offload, NVMe tier behind a 16 GiB RAM tier (0.1.0) | the same reload from disk in **1.85 s** |
 | 100k-token context (0.1.0) | prompt read in 21.9 s; decode after it 177 tok/s |
 | FP8 KV cache (not the default; 0.1.0) | pool 2,578,229 tokens (+73 %), one-user decode −8 to −10 %, answers shift |

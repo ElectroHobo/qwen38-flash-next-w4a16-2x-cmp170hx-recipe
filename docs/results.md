@@ -128,7 +128,11 @@ rounded by torch's pinned allocator to 64 GiB. With `PLE_SHARED_DIR` it is a
 shared mapping of one tmpfs file registered with CUDA: this recipe and the
 one-card one on one host took 48 GiB of host shared memory together (each 64 GiB
 alone before), with step times and greedy outputs as with a private table
-(16 users 55.15 against 55.77 ms per step on one card).
+(16 users 55.15 against 55.77 ms per step on one card). Again on 2026-10-24
+with the release code, this recipe's fresh clone beside the one-card recipe's
+build on one 47.68 GiB file: 49 GiB of host shared memory with both up, one user
+here 241.0 / 347.0 / 196.0 tok/s (241.2 / 349.7 / 198.4 alone). Raw:
+`cmp-recipe-bench-shared-c-*.json`, `shared-table-check-0.2.0-run.txt`.
 
 ### Copy-on-write in chunks
 
