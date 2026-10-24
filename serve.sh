@@ -7,7 +7,9 @@
 #   dflash         inco.ai's DFlash 2 drafter (DFLASH_MODEL, mounted at /drafter by
 #                  start.sh), SPEC_N drafts (default 7) by the SPEC_SCHEDULE below, on the
 #                  two patched engine files in patches/ that start.sh mounts.
-#   mtp            the checkpoint's native MTP head, num_speculative_tokens = SPEC_N (3).
+#   mtp            the checkpoint's native MTP head, SPEC_N (3) drafts by its own
+#                  schedule (3 to four requests, 2 to eight, 1 beyond): faster than
+#                  dflash from about 16 users up, slower for one to a few.
 #   none           no speculative decoding.
 # Set DRY=1 to print the environment and the command that would run instead
 # of running them.
@@ -26,6 +28,7 @@
 # Cards: CUDA_VISIBLE_DEVICES selects exactly two distinct physical cards
 #   (nvidia-smi numbering; default below).
 # Env overrides: MAX_SEQS, MAX_BATCHED, SPEC_N, LOCAL_ARGMAX, SPEC_SCHEDULE,
+#   SSM_DTYPE, BLOCK_SIZE, RECOVER_SSM, PLE_SHARED_DIR, PLE_SHARED_NAME,
 #   GRAPH_MODE, KV_OFFLOAD_GB, KV_OFFLOAD_DIR, REASONING_PARSER, TOOL_PARSER,
 #   EXTRA_ARGS, P2P, BOOT_CHECK.
 #   MAX_LEN must stay 262144 and GPU_UTIL 0.95 (refused otherwise);
@@ -80,10 +83,14 @@ QWEN_DEFAULT_LOCAL_ARGMAX=0
 QWEN_DEFAULT_SPEC_SCHEDULE=
 QWEN_DEFAULT_DFLASH_MODEL=/drafter
 QWEN_DEFAULT_DFLASH_SPEC_N=7
-QWEN_DEFAULT_DFLASH_SPEC_SCHEDULE=[[1,2,7],[3,4,5],[5,8,3]]
-QWEN_DEFAULT_DFLASH_BLOCK_SIZE=1680
+QWEN_DEFAULT_DFLASH_SPEC_SCHEDULE=[[1,2,7],[3,4,5],[5,32,3],[33,128,2]]
+QWEN_DEFAULT_MTP_SPEC_SCHEDULE=[[1,4,3],[5,8,2],[9,128,1]]
+QWEN_DEFAULT_DFLASH_BLOCK_SIZE=912
+QWEN_DEFAULT_DFLASH_BLOCK_SIZE_FP32_STATES=1680
+QWEN_DEFAULT_SSM_DTYPE=bfloat16
+QWEN_DEFAULT_RECOVER_SSM=1
 QWEN_DEFAULT_DFLASH_PREFIX_MATCH_UNIT=16
-QWEN_DEFAULT_MAX_SEQS=8
+QWEN_DEFAULT_MAX_SEQS=128
 QWEN_DEFAULT_MAX_BATCHED=3460
 QWEN_DEFAULT_REASONING_PARSER=qwen3
 QWEN_DEFAULT_TOOL_PARSER=qwen3_coder
@@ -245,6 +252,20 @@ GPU_UTIL=${GPU_UTIL-$QWEN_DEFAULT_GPU_UTIL}
 if [ "$GPU_UTIL" != 0.95 ]; then
   echo 'Serving requires GPU_UTIL=0.95, including FIRST_LIGHT=1' >&2; exit 2
 fi
+# GDN recurrent states: bfloat16 (default) or float32 (what the checkpoint asks for). BF16
+# halves the state pages and shortens the step 1-3 % at load; quality measured level.
+SSM_DTYPE=${SSM_DTYPE:-$QWEN_DEFAULT_SSM_DTYPE}
+case "$SSM_DTYPE" in float32|bfloat16) ;; *) echo 'SSM_DTYPE must be float32 or bfloat16' >&2; exit 2 ;; esac
+# RecoverSSM (patches/gdn_recover, mounted by start.sh and Compose): one GDN state per request,
+# accepted tokens replayed after sampling, instead of one state per draft position.
+RECOVER_SSM=${RECOVER_SSM:-$QWEN_DEFAULT_RECOVER_SSM}
+case "$RECOVER_SSM" in 0|1) ;; *) echo 'RECOVER_SSM must be 0 or 1' >&2; exit 2 ;; esac
+if [ "$RECOVER_SSM" = 1 ]; then export VLLM_GDN_RECOVER=1; else unset VLLM_GDN_RECOVER; fi
+# PLE_SHARED_DIR: the n-gram table as one shared host copy (patches/qwen4_exp_common_ngram_embedding.py).
+if [ -n "${PLE_SHARED_DIR:-}" ]; then
+  export VLLM_QWEN_PLE_SHARED_DIR=$PLE_SHARED_DIR
+  export VLLM_QWEN_PLE_SHARED_NAME=${PLE_SHARED_NAME:-qwen38-flash-next-ple-fp8}
+fi
 SPEC=()
 if [ "$MODE" = mtp ]; then
   SPEC_N=${SPEC_N:-$QWEN_DEFAULT_SPEC_N}
@@ -255,10 +276,11 @@ if [ "$MODE" = mtp ]; then
   case "$LOCAL_ARGMAX" in 0|1) ;; *) echo 'LOCAL_ARGMAX must be 0 or 1' >&2; exit 2;; esac
   SPEC_JSON="{\"method\":\"mtp\",\"num_speculative_tokens\":$SPEC_N"
   if [ "$LOCAL_ARGMAX" = 1 ]; then SPEC_JSON+=",\"use_local_argmax_reduction\":true"; fi
-  # SPEC_SCHEDULE (empty: off): upstream dynamic speculative decoding, num_speculative_tokens_per_batch_size,
+  # SPEC_SCHEDULE (set empty: off): upstream dynamic speculative decoding, num_speculative_tokens_per_batch_size,
   # a JSON list of [first_batch, last_batch, drafts] ranges without spaces starting at batch 1, e.g.
-  # [[1,2,4],[3,8,3]] with SPEC_N=4 (drafts above SPEC_N are clamped to it).
-  SPEC_SCHEDULE=${SPEC_SCHEDULE:-${QWEN_DEFAULT_SPEC_SCHEDULE:-}}
+  # [[1,2,4],[3,8,3]] with SPEC_N=4 (drafts above SPEC_N are clamped to it). Each MTP draft is a
+  # pass of the MTP layer of its own, so under load fewer drafts win (docs/results.md, "MTP").
+  SPEC_SCHEDULE=${SPEC_SCHEDULE-$QWEN_DEFAULT_MTP_SPEC_SCHEDULE}
   if [ -n "$SPEC_SCHEDULE" ]; then
     SCHEDULE_RANGE='\[[1-9][0-9]*,[1-9][0-9]*,[0-9]+\]'
     if [[ ! "$SPEC_SCHEDULE" =~ ^\[$SCHEDULE_RANGE(,$SCHEDULE_RANGE)*\]$ ]]; then
@@ -271,10 +293,11 @@ if [ "$MODE" = mtp ]; then
 fi
 # DFlash 2 (the default). The drafter drafts a whole block in one pass, so more drafts
 # cost little; its block allows 7. 5-7 drafts need an attention block size that the
-# sparse-attention ring (12 for 5-7 drafts) divides: the engine picks 1,616-1,648, so
-# 1,680 is set (divisible by 12 and by the prefix-match unit 16). The schedule keeps 7
-# drafts where they pay (one or two requests) and 3 where the step is the GPU's.
-# Measured in docs/results.md, "DFlash 2".
+# sparse-attention ring (12 for 5-7 drafts) and the prefix-match unit 16 divide, so a
+# multiple of 48, and at least the GDN state page, which the engine otherwise pads up to
+# it: 912 with BF16 states (padding 5 %), 1,680 with float32 ones. The schedule keeps 7
+# drafts where they pay (one or two requests), 3 where the step is the GPU's and 2 from 33
+# requests. Measured in docs/results.md, "DFlash 2" and "0.2.0".
 DFLASH_ARGS=()
 PREFIX_MATCH_UNIT=64
 if [ "$MODE" = dflash ]; then
@@ -295,7 +318,12 @@ if [ "$MODE" = dflash ]; then
   # A drafter's own cache group would otherwise zero every KV-offload lookup (vLLM #52735).
   [ "${KV_OFFLOAD_GB:-0}" != 0 ] && SPEC_JSON+=",\"disable_eagle_block_drop\":true"
   SPEC=(--speculative-config "$SPEC_JSON}")
-  DFLASH_ARGS=(--block-size "${BLOCK_SIZE:-$QWEN_DEFAULT_DFLASH_BLOCK_SIZE}")
+  if [ "$SSM_DTYPE" = float32 ]; then DEFAULT_BLOCK=$QWEN_DEFAULT_DFLASH_BLOCK_SIZE_FP32_STATES
+  else DEFAULT_BLOCK=$QWEN_DEFAULT_DFLASH_BLOCK_SIZE; fi
+  BLOCK_SIZE=${BLOCK_SIZE:-$DEFAULT_BLOCK}
+  [[ "$BLOCK_SIZE" =~ ^[1-9][0-9]*$ ]] && [ $((BLOCK_SIZE % 48)) = 0 ] ||
+    { echo 'BLOCK_SIZE must be a multiple of 48' >&2; exit 2; }
+  DFLASH_ARGS=(--block-size "$BLOCK_SIZE")
   PREFIX_MATCH_UNIT=$QWEN_DEFAULT_DFLASH_PREFIX_MATCH_UNIT
 fi
 # KV offload (KV_OFFLOAD_GB, default 0: off): a tier of host RAM, in GiB, that keeps KV
@@ -337,6 +365,7 @@ CMD=("$VENV/bin/vllm" serve "$MODEL"
   --enable-auto-tool-choice --tool-call-parser "${TOOL_PARSER:-$QWEN_DEFAULT_TOOL_PARSER}"
   --port "$PORT"
   --prefix-match-unit "$PREFIX_MATCH_UNIT" ${DFLASH_ARGS[@]+"${DFLASH_ARGS[@]}"}
+  --mamba-ssm-cache-dtype "$SSM_DTYPE"
   ${FL_ARGS[@]+"${FL_ARGS[@]}"} "${GRAPH_ARGS[@]}" ${SPEC[@]+"${SPEC[@]}"} ${KV_OFFLOAD[@]+"${KV_OFFLOAD[@]}"})
 # Additional arguments are whitespace-separated.
 read -r -a EXTRA <<< "${EXTRA_ARGS:-}"
@@ -394,7 +423,7 @@ for argument in ${EXTRA[@]+"${EXTRA[@]}"}; do
   fi
 done
 CMD+=(${EXTRA[@]+"${EXTRA[@]}"})
-echo "serve.sh: W4A16 enabled TP=2 PP=1 whole-expert-EP GPUs=$CUDA_VISIBLE_DEVICES PLE=host-ram dtype=BF16 KV=$QWEN_DEFAULT_KV_CACHE_DTYPE indexer=BF16 vision=on MTP=$MODE graphs=$GRAPH_MODE kv_offload_gb=$KV_OFFLOAD_GB FIRST_LIGHT=$FIRST_LIGHT"
+echo "serve.sh: W4A16 enabled TP=2 PP=1 whole-expert-EP GPUs=$CUDA_VISIBLE_DEVICES PLE=host-ram dtype=BF16 KV=$QWEN_DEFAULT_KV_CACHE_DTYPE indexer=BF16 vision=on MTP=$MODE graphs=$GRAPH_MODE kv_offload_gb=$KV_OFFLOAD_GB FIRST_LIGHT=$FIRST_LIGHT ssm_states=$SSM_DTYPE recover_ssm=$RECOVER_SSM ple_shared=${PLE_SHARED_DIR:-off}"
 echo "serve.sh: Qwen4Exp CUDA graph mode=$GRAPH_MODE (GRAPH_MODE=$GRAPH_MODE)"
 BOOT_CHECK=${BOOT_CHECK:-1}
 case "$BOOT_CHECK" in 0|1) ;; *) echo "[boot-check] FAIL: BOOT_CHECK must be 0 or 1" >&2; exit 2 ;; esac

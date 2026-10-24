@@ -78,6 +78,17 @@ services:
       - ${MODELS_DIR:-./models}/Qwen3.8-Flash-Next-DFlash2:/drafter:ro
       - ./patches/qwen4_exp_nvidia_model.py:/opt/vllm-src/vllm/models/qwen4_exp/nvidia/model.py:ro
       - ./patches/models_config.py:/opt/vllm-src/vllm/model_executor/models/config.py:ro
+      # RecoverSSM (RECOVER_SSM=0 in docker/container.env turns it off), the n-gram
+      # table loader and the chunked copy-on-write; patches/README.md.
+      - ./patches/gdn_recover:/opt/vllm-src/vllm/sm80/kernels/gdn:ro
+      - ./patches/mamba_gdn_qwen_gdn_linear_attn.py:/opt/vllm-src/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py:ro
+      - ./patches/qwen4_exp_nvidia_model_state.py:/opt/vllm-src/vllm/models/qwen4_exp/nvidia/model_state.py:ro
+      - ./patches/qwen4_exp_nvidia_ple_layer.py:/opt/vllm-src/vllm/models/qwen4_exp/nvidia/ple_layer.py:ro
+      - ./patches/qwen4_exp_common_ngram_embedding.py:/opt/vllm-src/vllm/models/qwen4_exp/common/ngram_embedding.py:ro
+      - ./patches/v1_worker_utils.py:/opt/vllm-src/vllm/v1/worker/utils.py:ro
+      # One n-gram table for several servers: uncomment, and set PLE_SHARED_DIR to the
+      # same path in docker/container.env (README, "Several servers, one table").
+      # - /dev/shm/qwen38-ple:/dev/shm/qwen38-ple
       - ./cache:/cache
     healthcheck:
       test: ["CMD", "/opt/venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"]

@@ -6,10 +6,13 @@
 # We serve halt95/Qwen3.8-Flash-Next-W4A16-Merlin (AutoRound INT4 experts, FP8
 # n-gram table) on two GPUs with Morrowmake's patched vLLM: OpenAI API on
 # 127.0.0.1:8000 as "qwen3.8-flash-next" (local only unless you set HOST; no
-# API key unless you set API_KEY), native MTP speculation at k=3, 262,144-token
+# API key unless you set API_KEY), inco.ai's DFlash 2 drafter (7 drafts for one
+# or two users down to 2 from 33), up to 128 requests at once, 262,144-token
 # context, vision on, tensor-parallel 2 with whole routed experts per card,
 # the whole decode step in one CUDA graph. Every weight is on the GPUs except
-# the n-gram (PLE) table, which lives in host RAM (51 GB). bf16 KV cache;
+# the n-gram (PLE) table, which lives in host RAM (48 GiB; PLE_SHARED_DIR lets
+# several servers share one copy). bf16 KV cache and GDN states, RecoverSSM for
+# the GDN layers (one state per request instead of one per draft);
 # KV_OFFLOAD_GB adds a host-RAM tier for KV blocks evicted from the cards.
 #
 # The engine runs in a container: Docker with the NVIDIA Container Toolkit,
@@ -161,11 +164,26 @@ export CUDA_VISIBLE_DEVICES
 SPEC_MODE="${SPEC_MODE:-dflash}"
 case "$SPEC_MODE" in dflash|mtp|none) ;; *) die "SPEC_MODE must be dflash, mtp or none, not '$SPEC_MODE'" ;; esac
 # The DFlash 2 drafter (SPEC_MODE=dflash, the default), pinned like the checkpoint,
-# and the two engine files it needs (patches/, mounted over the image's copies).
+# and the two engine files it needs (patches/, mounted over the image's copies;
+# the other patched files there are mounted in every mode, patches/README.md).
 DRAFTER_REPO="${DRAFTER_REPO:-incoai/Qwen3.8-Flash-Next-DFlash2}"
 DRAFTER_REVISION="${DRAFTER_REVISION:-a22a1744e85c17364dcc54a6a420af7135d4c7f6}"
 DFLASH_MODEL="${DFLASH_MODEL:-$MODELS_DIR/${DRAFTER_REPO##*/}}"
 CONTAINER_NAME="${CONTAINER_NAME:-qwen38-flash-next}"
+# RecoverSSM for the GDN layers (patches/gdn_recover, 1 = on, the default): each
+# request keeps one recurrent state instead of one per draft position, which is
+# what lets 128 requests fit. 0 = the engine's own per-draft states.
+RECOVER_SSM="${RECOVER_SSM:-1}"
+case "$RECOVER_SSM" in 0|1) ;; *) die "RECOVER_SSM must be 0 or 1" ;; esac
+# One host copy of the n-gram table for several servers: a host directory on tmpfs
+# (e.g. /dev/shm/qwen38-ple), mounted read-write at the same path. Every server
+# given the same PLE_SHARED_DIR and PLE_SHARED_NAME maps the same 48 GiB instead of
+# pinning its own (64 GiB each); empty = off, the table is the server's own.
+PLE_SHARED_DIR="${PLE_SHARED_DIR:-}"
+if [ -n "$PLE_SHARED_DIR" ]; then
+    [[ "$PLE_SHARED_DIR" = /* ]] || die "PLE_SHARED_DIR must be an absolute path"
+fi
+PLE_SHARED_NAME="${PLE_SHARED_NAME:-qwen38-flash-next-ple-fp8}"
 # KV offload: a RAM tier of KV_OFFLOAD_GB GiB lives in the container's /dev/shm, so
 # the default shm grows to hold it (the n-gram table is pinned host memory, not shm);
 # KV_OFFLOAD_DIR (a host directory) is mounted at /kvtier for the disk tier behind it.
@@ -446,7 +464,7 @@ publish_addr() {
 # every setting of yours that serve.sh reads. serve.sh (mounted from this
 # checkout) turns them into the server's flags.
 CONTAINER_KEYS="P2P P2P_PREBUILT P2P_CHECK_CACHE LAYOUT CUDA_VISIBLE_DEVICES MAX_LEN MAX_SEQS MAX_BATCHED GPU_UTIL
-SPEC_N LOCAL_ARGMAX SPEC_SCHEDULE GRAPH_MODE PLE_PLACEMENT FIRST_LIGHT REASONING_PARSER TOOL_PARSER EXTRA_ARGS KV_OFFLOAD_GB
+SPEC_N SSM_DTYPE BLOCK_SIZE RECOVER_SSM PLE_SHARED_DIR PLE_SHARED_NAME LOCAL_ARGMAX SPEC_SCHEDULE GRAPH_MODE PLE_PLACEMENT FIRST_LIGHT REASONING_PARSER TOOL_PARSER EXTRA_ARGS KV_OFFLOAD_GB
 SERVED_MODEL_NAME API_KEY"
 container_env() {
     local k
@@ -511,6 +529,18 @@ container_args() {
         CRUN+=(-v "$DFLASH_MODEL:/drafter:ro"
             -v "$SCRIPT_DIR/patches/qwen4_exp_nvidia_model.py:/opt/vllm-src/vllm/models/qwen4_exp/nvidia/model.py:ro"
             -v "$SCRIPT_DIR/patches/models_config.py:/opt/vllm-src/vllm/model_executor/models/config.py:ro")
+    fi
+    # Every mode: RecoverSSM (inert with RECOVER_SSM=0), the n-gram table loader
+    # (PLE_SHARED_DIR) and the chunked copy-on-write (patches/README.md).
+    CRUN+=(-v "$SCRIPT_DIR/patches/gdn_recover:/opt/vllm-src/vllm/sm80/kernels/gdn:ro"
+        -v "$SCRIPT_DIR/patches/mamba_gdn_qwen_gdn_linear_attn.py:/opt/vllm-src/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py:ro"
+        -v "$SCRIPT_DIR/patches/qwen4_exp_nvidia_model_state.py:/opt/vllm-src/vllm/models/qwen4_exp/nvidia/model_state.py:ro"
+        -v "$SCRIPT_DIR/patches/qwen4_exp_nvidia_ple_layer.py:/opt/vllm-src/vllm/models/qwen4_exp/nvidia/ple_layer.py:ro"
+        -v "$SCRIPT_DIR/patches/qwen4_exp_common_ngram_embedding.py:/opt/vllm-src/vllm/models/qwen4_exp/common/ngram_embedding.py:ro"
+        -v "$SCRIPT_DIR/patches/v1_worker_utils.py:/opt/vllm-src/vllm/v1/worker/utils.py:ro")
+    if [ -n "$PLE_SHARED_DIR" ]; then
+        [ -n "${DRY:-}" ] || mkdir -p "$PLE_SHARED_DIR"
+        CRUN+=(-v "$PLE_SHARED_DIR:$PLE_SHARED_DIR")
     fi
     CRUN+=(-v "$CACHE_DIR:/cache"
         --entrypoint /bin/bash "$IMAGE" /recipe/serve.sh "$SPEC_MODE")
