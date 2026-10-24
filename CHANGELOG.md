@@ -2,7 +2,10 @@
 
 ## 0.2.0 — 2026-10-24
 
-Many users. The repository is renamed from `qwen38-flash-next-w4a16-cmp170hx-recipe`
+Many users: up to 128 requests at once instead of 8, and on the same box and
+development script the most total throughput goes from 609 tok/s (8 users) to
+1,555 with DFlash 2 and 1,814 with MTP (128 users); one to eight users are as fast
+as in 0.1.0. The repository is renamed from `qwen38-flash-next-w4a16-cmp170hx-recipe`
 to `qwen38-flash-next-w4a16-2x-cmp170hx-recipe` (GitHub redirects the old name), and
 has a one-card sibling, `qwen38-flash-next-3bpw-1x-cmp170hx-recipe`, on the same
 engine, patches and n-gram table. Same engine image and checkpoint as 0.1.0.

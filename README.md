@@ -18,6 +18,26 @@ recurrent states — and an optional host-RAM tier that brings an evicted
 serves a 3 bpw build of the same model on a single CMP 170HX with the same engine,
 patches and n-gram table, so both can run on one host from one copy of the table.
 
+**New in 0.2.0: many users.** For one to eight users 0.2.0 is as fast as 0.1.0
+(the differences are within run-to-run spread); what changes is how many fit at
+once and the total they get:
+
+| | 0.1.0 | 0.2.0 |
+|---|---:|---:|
+| Requests at once | 8 | **128** |
+| Most total tok/s, same box, mixed-load development script | 609 (8 users, its limit) | **1,555** DFlash 2, **1,814** MTP (128 users) |
+| 1 user, structured / code / prose | 253.2 / 348.9 / 203.2 | 241.2 / 349.7 / 198.4 |
+| 8 users, total | 842.2 / 992.1 / 726.7 | 894.5 / 986.8 / 769.7 |
+| Cold prefill | 4,729 | 4,696 |
+| KV pool | 1,398,101 tokens | 1,475,836 tokens |
+| HumanEval / GSM8K (first 200) | 163/164, 197/200 | 162/164, 198/200 |
+
+The 1-to-8-user rows are each release's fresh-clone run (`cmp_recipe_bench.py`);
+on the release sweep 0.2.0 does 1,937 tok/s at 128 users with DFlash 2 and 1,966
+with MTP ([Many users](#many-users-recoverssm-bf16-states-and-which-drafter)).
+Also new: one n-gram table for several servers on a host (`PLE_SHARED_DIR`), and
+a fix for an out-of-memory under bursts of shared prompts.
+
 Serve [halt95/Qwen3.8-Flash-Next-W4A16-Merlin](https://huggingface.co/halt95/Qwen3.8-Flash-Next-W4A16-Merlin)
 on two NVIDIA CMP 170HX cards with [Morrowmake's vllm-cmp170hx](https://github.com/Morrowmake/vllm-cmp170hx)
 fork of vLLM: an OpenAI-compatible API with the model's full context, DFlash 2
