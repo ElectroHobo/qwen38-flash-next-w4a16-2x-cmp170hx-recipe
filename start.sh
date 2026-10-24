@@ -651,7 +651,7 @@ kv_line() {
 wait_ready() {
     [ -z "${DRY:-}" ] || return 0
     local url="http://$CLIENT_HOST:$PORT/health" elapsed=0 started=$SECONDS checker status
-    log "waiting for $url (weight load and graph capture on a 320B MoE are slow; timeout ${READY_TIMEOUT}s)"
+    log "waiting for $url (weight load and graph capture on a 125B MoE are slow; timeout ${READY_TIMEOUT}s)"
     local log_args=(--log "$SERVE_LOG" --log-offset "${BOOT_LOG_OFFSET:-0}" --container)
     while true; do
         elapsed=$((SECONDS - started))
