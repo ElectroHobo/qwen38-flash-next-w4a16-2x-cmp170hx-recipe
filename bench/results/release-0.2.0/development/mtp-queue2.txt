@@ -1,0 +1,7 @@
+num_speculative_tokens_per_batch_size': [[1, 32, 3], [33, 64, 2], [65, 128, 1]], 'disable_eagle_b
+2card mtp 3-2-1 96        2     1710.9     87.95     1.790     76.1%
+2card mtp 3-2-1 128       2     1814.0    111.20     1.783     76.3%
+num_speculative_tokens_per_batch_size': [[1, 24, 3], [25, 48, 2]], 'disable_eagle_block_drop': Tr
+1card mtp 3-2 32        2      932.5     69.74     2.359     65.8%
+1card mtp 3-2 48        2     1104.6     87.59     2.347     66.5%
+done 19:32:24

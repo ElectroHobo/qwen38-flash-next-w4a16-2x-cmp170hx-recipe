@@ -1,0 +1,23 @@
+15:10:49 2card-d1-seq48 on :18441 (qwen3.8-flash-next-w4a16)
+c       有效轮    聚合tok/s      ms/步     tok/步       接受率
+--------------------------------------------------------
+1         2      188.7     14.74     2.863     26.6%
+4         2      378.8     22.50     2.709     32.8%
+8         2      595.5     26.89     2.641     50.2%
+16        2      758.4     39.47     2.620     50.4%
+24        2      887.8     53.22     2.632     52.3%
+32        2      963.4     59.46     2.662     54.5%
+48        2      948.5     60.49     2.615     52.7%
+  4 user(s) code         709.5 tok/s
+  4 user(s) prose        492.3 tok/s
+  8 user(s) structured   875.7 tok/s
+  8 user(s) code         992.9 tok/s
+  8 user(s) prose        764.2 tok/s
+
+| | |
+|---|---:|
+| Streaming decode, 1 user, structured / code / prose | 245.2 / 348.0 / 196.3 tok/s |
+| Decode, 2 users, aggregate, structured / code / prose | 364.6 / 520.9 / 306.5 tok/s |
+| Decode, 4 users, aggregate, structured / code / prose | 552.2 / 709.5 / 492.3 tok/s |
+| Decode, 8 users, aggregate, structured / code / prose | 875.7 / 992.9 / 764.2 tok/s |
+15:17:49 done

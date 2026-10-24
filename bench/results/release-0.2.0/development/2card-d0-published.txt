@@ -1,0 +1,19 @@
+14:59:54 2card-d0-published on :18441 (qwen3.8-flash-next-w4a16)
+c       有效轮    聚合tok/s      ms/步     tok/步       接受率
+--------------------------------------------------------
+1         2      169.4     14.69     2.603     22.9%
+4         2      388.2     22.63     2.830     34.9%
+8         2      608.9     27.08     2.649     50.8%
+  4 user(s) code         681.2 tok/s
+  4 user(s) prose        468.9 tok/s
+  8 user(s) structured   857.3 tok/s
+  8 user(s) code         988.0 tok/s
+  8 user(s) prose        741.0 tok/s
+
+| | |
+|---|---:|
+| Streaming decode, 1 user, structured / code / prose | 233.5 / 348.3 / 204.3 tok/s |
+| Decode, 2 users, aggregate, structured / code / prose | 387.3 / 489.5 / 309.6 tok/s |
+| Decode, 4 users, aggregate, structured / code / prose | 531.8 / 681.2 / 468.9 tok/s |
+| Decode, 8 users, aggregate, structured / code / prose | 857.3 / 988.0 / 741.0 tok/s |
+15:02:38 done
