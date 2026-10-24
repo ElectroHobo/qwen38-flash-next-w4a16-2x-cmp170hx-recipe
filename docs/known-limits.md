@@ -2,7 +2,7 @@
 
 ## Status
 
-Release 0.2.0 (2026-10-23). Measured on one box: a dual Xeon E5-2697A v4 host
+Release 0.2.0 (2026-10-24). Measured on one box: a dual Xeon E5-2697A v4 host
 with two CMP 170HX cards. 0.1.0 was measured over a weekend; 0.2.0's
 additions (RecoverSSM, BF16 GDN states, 128 requests, the shared table, the MTP
 schedule) ran through a day of development benchmarks, debug checks and quality

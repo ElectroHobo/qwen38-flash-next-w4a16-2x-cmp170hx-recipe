@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0 — 2026-10-23
+## 0.2.0 — 2026-10-24
 
 Many users. The repository is renamed from `qwen38-flash-next-w4a16-cmp170hx-recipe`
 to `qwen38-flash-next-w4a16-2x-cmp170hx-recipe` (GitHub redirects the old name), and
