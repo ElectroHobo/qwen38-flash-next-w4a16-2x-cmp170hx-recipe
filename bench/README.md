@@ -2,11 +2,13 @@
 
 Stdlib-only Python against a running server. Each takes a port and a model id;
 run them on an idle server. The raw output of every run behind
-[`docs/results.md`](../docs/results.md) is in `results/release-0.1.0/`.
+[`docs/results.md`](../docs/results.md) is in `results/release-0.2.0/` and
+`results/release-0.1.0/`.
 
 | Script | Measures | Takes |
 |---|---|---|
 | `cmp_recipe_bench.py --port 8000 --model qwen3.8-flash-next --tag mine` | decode at 1 / 2 / 4 / 8 users and cold prefill, the MiaAI-Lab protocol Morrowmake's tables use; writes a markdown table and a JSON of the runs | ~5 min |
+| `concurrency_sweep.py --port 8000 --model qwen3.8-flash-next --tag mine` | aggregate decode tok/s, ms per engine step and tokens per request-step from 1 to 128 users (`--users`), 700-token replies at temperature 0, the three task prompts rotating; writes `results/concurrency-<tag>.json` | ~10 min |
 | `vllm_conc_steps.py 8000 qwen3.8-flash-next` | engine steps, ms per step and draft acceptance per position at 1 / 2 / 4 users, from the server's own counters | ~3 min |
 | `kv_offload_bench.py mine --port 8000 --model qwen3.8-flash-next` | whether a 100k-token context evicted by a 1.8M-token flood comes back from the KV tier (time to first token, hidden codes); compare a run with `KV_OFFLOAD_GB=0` against one with the tier | ~8 min |
 | `kv_dtype_check.py mine --port 8000 --model qwen3.8-flash-next` | pool size, 100k-context prefill and decode, five temperature-0 answers to diff between two KV dtypes | ~3 min |

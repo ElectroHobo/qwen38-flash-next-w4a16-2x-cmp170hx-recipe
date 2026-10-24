@@ -4,10 +4,10 @@ title: "Qwen3.8-Flash-Next W4A16 on 2x CMP 170HX: a community recipe for Morrowm
 type: software
 authors:
   - name: ElectroHobo
-version: 0.1.0
-date-released: 2026-10-19
+version: 0.2.0
+date-released: 2026-10-23
 license: MIT
-repository-code: "https://github.com/ElectroHobo/qwen38-flash-next-w4a16-cmp170hx-recipe"
+repository-code: "https://github.com/ElectroHobo/qwen38-flash-next-w4a16-2x-cmp170hx-recipe"
 references:
   - type: software
     title: "vllm-cmp170hx"
@@ -50,6 +50,12 @@ references:
       - name: RadixArk
     url: "https://huggingface.co/RadixArk/Qwen3.8-Flash-Next-NVFP4"
     notes: "The FP8 n-gram (PLE) table inside halt95's checkpoint."
+  - type: software
+    title: "Qwen3.8-Flash-Next 3 bpw on 1x CMP 170HX"
+    authors:
+      - name: ElectroHobo
+    repository-code: "https://github.com/ElectroHobo/qwen38-flash-next-3bpw-1x-cmp170hx-recipe"
+    notes: "The one-card sibling of this recipe: the same engine, patches and n-gram table."
   - type: software
     title: "vLLM"
     authors:

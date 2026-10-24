@@ -3,8 +3,10 @@
 ## What you need
 
 - Two CMP 170HX cards exposing 64 GiB each, on x16 links, in a Linux host with
-  **96 GB of RAM or more** (the n-gram table takes 51 GB of it) and NVIDIA
-  driver 580 or newer. Add `KV_OFFLOAD_GB` to the RAM figure if you turn the KV
+  **96 GB of RAM or more** (the n-gram table takes 64 GiB of it as the engine
+  allocates it, 48 GiB shared with `PLE_SHARED_DIR`) and NVIDIA driver 580 or
+  newer. One card instead? See the one-card recipe,
+  [qwen38-flash-next-3bpw-1x-cmp170hx-recipe](https://github.com/ElectroHobo/qwen38-flash-next-3bpw-1x-cmp170hx-recipe). Add `KV_OFFLOAD_GB` to the RAM figure if you turn the KV
   tier on.
 - Docker with the NVIDIA Container Toolkit, usable by your user.
 - About 130 GiB of free disk for the checkpoint (115.3 GiB) and the engine's
@@ -13,7 +15,7 @@
 
 ## Step by step
 
-1. `git clone https://github.com/ElectroHobo/qwen38-flash-next-w4a16-cmp170hx-recipe && cd qwen38-flash-next-w4a16-cmp170hx-recipe`
+1. `git clone https://github.com/ElectroHobo/qwen38-flash-next-w4a16-2x-cmp170hx-recipe && cd qwen38-flash-next-w4a16-2x-cmp170hx-recipe`
 2. `cp .env.example .env` and edit it if the defaults are wrong for you: which
    two cards (`CUDA_VISIBLE_DEVICES`), where the checkpoint goes (`MODELS_DIR`),
    whether other machines may connect (`HOST=0.0.0.0` and an `API_KEY`). The
@@ -22,10 +24,10 @@
    digest, downloads the checkpoint and the DFlash 2 drafter at their pinned
    revisions (resumable), starts
    the server detached and waits for `/health`, then sends two requests to
-   confirm it drafts. The first start compiles kernels and takes about 15
-   minutes; later starts about 5. Watch with `./start.sh logs`.
+   confirm it drafts. The first start compiles kernels and takes about 22
+   minutes; later starts 5 to 11. Watch with `./start.sh logs`.
 4. `./start.sh status` shows the server, `/health` and the KV pool line
-   (`GPU KV cache size: 1,398,101 tokens` with the defaults).
+   (`GPU KV cache size: 1,475,836 tokens` with the defaults).
 
 `DRY=1 ./start.sh` prints every check, the environment the container would get
 and the launch command, and changes nothing.
@@ -47,6 +49,43 @@ reasoning off for a request:
 coder parser; see [`examples/tool_call.py`](../examples/tool_call.py). The
 model also takes images.
 
+## Few users or many: which drafter
+
+The default drafter, DFlash 2, is the faster one for one to about sixteen users,
+and by far on code (350 against 243 tok/s for one user). From about 32 users
+up the checkpoint's own MTP head drafting 3, then 2, then 1 token as the load
+grows is ahead (1,966 against 1,937 tok/s at 128 in our sweep, more on mixed
+traffic):
+
+```
+SPEC_MODE=mtp ./start.sh restart     # or SPEC_MODE=mtp in .env
+```
+
+Both use RecoverSSM and fit 128 requests. Tables: [results.md](results.md),
+"Release 0.2.0". Fewer requests at once (`MAX_SEQS`) keep each one faster: at
+128 each user gets about 15 tok/s.
+
+## Several servers, one table
+
+The n-gram table is 48 GiB of host memory that every server pins for itself
+(64 GiB as the engine allocates it). Servers on one host can share one copy:
+
+```
+PLE_SHARED_DIR=/dev/shm/qwen38-ple   # in .env of every server that shares
+```
+
+The directory must be on tmpfs (`/dev/shm` is) and the same path for every
+server; `start.sh` mounts it into the container. The first server to start
+fills the table file; the others map it and only compare it with their
+checkpoint. This recipe and the one-card
+recipe read the same table, so a two-card and a one-card server on one host
+share it too (48 GiB together instead of 128). A server whose table differs
+refuses to start rather than touch the shared rows; give it another
+`PLE_SHARED_NAME`. The file stays in RAM until the host reboots or you delete
+it: `rm /dev/shm/qwen38-ple/*` once no server uses it. With Docker Compose,
+uncomment the volume in `docker-compose.yml` and set `PLE_SHARED_DIR` in
+`docker/container.env`.
+
 ## Keep long contexts around (KV offload)
 
 Agents that share a long context — a repository, a document — pay for it once
@@ -63,7 +102,7 @@ came back in 0.68 s instead of being re-read in 22 s, and the engine checked
 the content was the same. This build's KV is about 30 KB per token, so 64 GiB
 holds roughly 2.2 million tokens of history. The tier is a shared mapping in
 the container's `/dev/shm`; `start.sh` sizes that to `KV_OFFLOAD_GB + 32` GiB.
-Budget the RAM: 51 GB for the table, the tier, and 20 GB or so for the engine.
+Budget the RAM: 64 GiB for the table (or its share), the tier, and 20 GB or so for the engine.
 
 `KV_OFFLOAD_DIR=/path/on/a/fast/disk` adds a disk tier behind the RAM tier
 (needs `KV_OFFLOAD_GB` > 0). A reload from an NVMe took 1.85 s. **The disk tier
@@ -95,13 +134,15 @@ The harnesses in [`bench/`](../bench/) take a port and a model id:
 
 ```bash
 python3 bench/cmp_recipe_bench.py --port 8000 --model qwen3.8-flash-next --tag mine
+python3 bench/concurrency_sweep.py --port 8000 --model qwen3.8-flash-next --tag mine
 python3 bench/vllm_conc_steps.py 8000 qwen3.8-flash-next
 python3 bench/kv_offload_bench.py mine --port 8000 --model qwen3.8-flash-next
 python3 bench/kv_dtype_check.py mine --port 8000 --model qwen3.8-flash-next
 ```
 
 Run them on an idle server; `cmp_recipe_bench.py` takes about five minutes,
-`kv_offload_bench.py` about eight (it floods the pool on purpose).
+`concurrency_sweep.py` (1 to 128 users) about ten, `kv_offload_bench.py` about
+eight (it floods the pool on purpose).
 [`docs/results.md`](results.md) says what each measured and how.
 
 ## Advanced
@@ -109,14 +150,20 @@ Run them on an idle server; `cmp_recipe_bench.py` takes about five minutes,
 - `GRAPH_MODE=PIECEWISE` restores Morrowmake's recipe's graph mode. It is about
   3× slower per step on an old CPU; on a current CPU the gap is smaller. There
   is no reason to set it other than to see the difference.
-- The drafter: `SPEC_MODE=dflash` (default) runs inco.ai's DFlash 2 drafter
-  with the two engine files in `patches/` mounted; `SPEC_MODE=mtp` runs the
-  checkpoint's own MTP head on the image as released (about 30 % slower on
-  code, the same quality); `SPEC_MODE=none` drafts nothing (set `BOOT_CHECK=0`).
+- The drafter: `SPEC_MODE=dflash` (default) runs inco.ai's DFlash 2 drafter;
+  `SPEC_MODE=mtp` runs the checkpoint's own MTP head (about 30 % slower on code
+  for few users, ahead from about 32, the same quality); `SPEC_MODE=none`
+  drafts nothing (set `BOOT_CHECK=0`).
 - `SPEC_N` and `SPEC_SCHEDULE` set the draft count. With DFlash 2 the default is
-  7, scheduled 7 / 5 / 3 by the number of requests (`[[1,2,7],[3,4,5],[5,8,3]]`);
-  set `SPEC_SCHEDULE=` for a fixed count. With MTP the default is 3. Both sweeps
-  are in `results.md`.
+  7, scheduled 7 / 5 / 3 / 2 by the number of requests
+  (`[[1,2,7],[3,4,5],[5,32,3],[33,128,2]]`); with MTP 3, scheduled 3 / 2 / 1
+  (`[[1,4,3],[5,8,2],[9,128,1]]`: each MTP draft is a pass of its own, so fewer
+  win under load). `SPEC_SCHEDULE=` for a fixed count. The sweeps are in
+  `results.md`.
+- `RECOVER_SSM=0` turns RecoverSSM off (the engine's per-draft states: about 28
+  requests fit with seven drafts); `SSM_DTYPE=float32` keeps the GDN states at
+  the checkpoint's precision (the block size then defaults to 1680). Neither is
+  needed for quality; both are for comparison.
 - `MAX_BATCHED` (3460) is the prefill slice per scheduler step; 8192 reads
   prompts 6 % faster for a 6 % smaller pool, a smaller slice keeps a decoding
   user more responsive while a long prompt is read, for a slower read. The

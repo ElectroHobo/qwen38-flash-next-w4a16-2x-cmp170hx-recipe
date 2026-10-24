@@ -3,9 +3,140 @@
 Every number here was measured on the same box: 2× CMP 170HX (74 SMs, 64 GiB,
 180 W, PCIe Gen2 x16, P2P on) in a dual Xeon E5-2697A v4 (Broadwell) host with
 204 GiB of RAM, driver 610.57.04, Morrowmake's engine at
-`18305948acba3f4c4d912cdd56f2202d2ebd94e8`. Raw files for each run are in
-[`bench/results/release-0.1.0/`](../bench/results/release-0.1.0/); the harnesses
-are in [`bench/`](../bench/). Dates are 2026-10-18 and 2026-10-19.
+`18305948acba3f4c4d912cdd56f2202d2ebd94e8`. Raw files for each release's runs are
+in [`bench/results/release-0.2.0/`](../bench/results/release-0.2.0/) and
+[`bench/results/release-0.1.0/`](../bench/results/release-0.1.0/), 0.2.0's
+development runs in `release-0.2.0/development/`; the harnesses are in
+[`bench/`](../bench/). Dates are 2026-10-18 to 2026-10-23.
+
+## Release 0.2.0
+
+### From a fresh clone
+
+Recipe defaults, started 2026-10-23 from a fresh clone with an empty `cache/` and
+a bare `./start.sh` (healthy after 1,336 s, startup check passed: 667 of 707
+drafts accepted), no KV tier; then the same checkout with `SPEC_MODE=mtp`
+(healthy after 659 s, 574 of 579 accepted). `cmp_recipe_bench.py` as in 0.1.0;
+`concurrency_sweep.py` 700-token replies at temperature 0, the structured, code
+and prose prompts rotating across requests, median of two rounds after a
+warm-up. Raw: `cmp-recipe-bench-0.2.0-fresh-*.json`,
+`concurrency-0.2.0-fresh-*.json`, `agent-*-0.2.0-fresh-*.json`,
+`conc-steps-0.2.0-fresh-*.txt`, `quality-0.2.0-fresh-*`, and the run's log
+`fresh-clone-0.2.0-run.txt`.
+
+| | DFlash 2 (default) | MTP (`SPEC_MODE=mtp`) |
+|---|---:|---:|
+| 1 user, structured / code / prose | **241.2 / 349.7 / 198.4** | 208.1 / 242.9 / 184.1 |
+| 2 users, total | 374.4 / 489.3 / 288.4 | 330.4 / 387.7 / 299.0 |
+| 4 users, total | 556.2 / 730.8 / 489.1 | 538.2 / 569.0 / 476.5 |
+| 8 users, total | 894.5 / 986.8 / 769.7 | 841.7 / 829.3 / 728.4 |
+| Code editing, one user | **495** | 271 |
+| Follow-up turn, time to first token | 0.42 s | **0.25 s** |
+| Cold prefill | **4,696** | 4,520 |
+| KV pool | 1,475,836 tokens | 1,438,968 tokens |
+| Quality: HumanEval / GSM8K (first 200) | 162/164, 198/200 | 162/164, 197/200 |
+
+`concurrency_sweep.py`, total tok/s (ms per engine step, tokens per request-step):
+
+| Users | DFlash 2 | MTP |
+|---:|---:|---:|
+| 1 | **216.1** (15.2, 3.31) | 198.2 (15.0, 2.98) |
+| 4 | **502.6** (23.3, 3.30) | 495.9 (22.1, 2.99) |
+| 8 | **772.4** (26.6, 2.95) | 744.2 (25.0, 2.55) |
+| 16 | **1,067.4** (38.5, 2.91) | 1,041.1 (27.3, 1.87) |
+| 32 | 1,357.0 (59.6, 2.95) | **1,379.0** (40.9, 1.87) |
+| 48 | 1,483.7 (73.1, 2.52) | **1,542.9** (54.2, 1.86) |
+| 64 | 1,647.2 (86.6, 2.50) | **1,731.7** (64.3, 1.86) |
+| 96 | 1,762.1 (120.3, 2.50) | **1,902.9** (87.7, 1.86) |
+| 128 | 1,937.3 (144.3, 2.50) | **1,966.3** (113.2, 1.86) |
+
+DFlash 2 accepts more per step at every load; MTP's step is shorter once it
+drafts one token, and from about 32 users the shorter step wins. The sweep's
+prompts are three fixed tasks at temperature 0, which DFlash 2 predicts well; on a
+mixed load in development (different prompts and lengths per request, a script
+not in this repository) MTP's lead was larger: 7 to 17 % from 16 users up (two
+cards: 16 users 890 against 761, 48 users 1,372 against 1,191, 128 users 1,814
+against 1,555).
+
+### RecoverSSM: one GDN state per request
+
+The 125B model has 36 Gated DeltaNet (linear-attention) layers with a recurrent
+state per request. To verify drafts the engine kept one state per draft position
+per request (`num_speculative_blocks`), so with seven drafts each request held
+eight state pages in every GDN layer. On two cards with `MAX_SEQS=48` that capped
+the server at 28 requests: the pool was 98 % full and the rest waited.
+RecoverSSM ([`patches/README.md`](../patches/README.md)) keeps one state, records
+per token what the update needs during the verify, and replays the accepted tokens
+after sampling. Development runs on the same box (mixed-load script, fp32 states,
+1,680-token blocks, the 0.1.0 schedule extended to 48):
+
+| Users | 48 requests, without | 48 requests, RecoverSSM | 128 requests, RecoverSSM |
+|---:|---:|---:|---:|
+| 1 | 188.7 | 183.7 | |
+| 8 | 595.5 | 577.2 | |
+| 32 | 963.4 | 1,001.1 | |
+| 48 | 948.5 (28 running) | **1,134.5** (48 running, 34 % of the pool) | 1,147.7 |
+| 64 | | | 1,215.0 |
+| 128 | | | **1,458.0** (94 % of the pool) |
+
+Quality with it: HumanEval 162/164, GSM8K 196/200 (fp32 states). Checks, all
+passed: the verify kernel against the original op on random inputs (fp32 and
+BF16 states, the one- and two-card head counts, 1 to 7 drafts, values near the
+denormal limit) bitwise for outputs and for the replayed state at every accepted
+count; in the server, every eager verify and commit against the replaced path,
+every spec row's request mapping (16,000 rows with prefix caching, 0 wrong), and
+states crossing a prefix-cache block boundary.
+
+The replay first ran ~25 % slower than it needed to: the verify is built with
+`--use_fast_math`, so its multiplies flush denormals to zero, and the replay
+emulated that with selects. It now uses the same `mul.rn.ftz` / `fma.rn.ftz`
+instructions (bitwise the same) and smaller tiles: 22 to 26 % faster with BF16
+states, about 2 % of a 48-user step.
+
+### BF16 GDN states and the block size
+
+`SSM_DTYPE=bfloat16` keeps the recurrent states in BF16 (the checkpoint asks for
+float32): half the state pages, and steps 1–3 % shorter at load (128 users: 175.8
+against 180.8 ms; 64: 104.6 against 107.2). Quality: HumanEval 162/164, GSM8K
+196/200, the same as float32. The attention block must then be smaller: the
+engine pads every state page up to an attention page, and a block that is too
+small for the state page is silently doubled. With BF16 states and seven drafts
+(which lengthen the conv state) 912 tokens fits with 5 % padding; 864 was doubled
+to 1,728 on one card and halved how many requests fitted.
+
+### Draft schedules under load
+
+DFlash 2 drafts a whole block in one pass, so fewer drafts at high load save only
+verify work: 2 drafts from 33 requests gave +2 to +4 % (development, mixed load:
+48 users 1,191 against 1,164, 128 users 1,555 against 1,500). Each MTP draft is a
+pass of the MTP layer of its own, so under load fewer drafts save much more:
+
+| Users | MTP 3 | MTP 3 / 2 / 1 by load (default) |
+|---:|---:|---:|
+| 16 | 830.0 | 889.6 (1 draft) |
+| 32 | 1,090.8 | 1,204.9 (1) |
+| 48 | 1,250.2 | 1,372.1 (1) |
+| 64 | 1,332.8 | 1,550.0 (1) |
+| 128 | 1,603.5 | **1,814.0** (1) |
+
+(development, mixed load; 1 draft is accepted 76 % of the time).
+
+### One n-gram table for several servers
+
+The table is 48 GiB of FP8 rows in pinned host memory, allocated per server and
+rounded by torch's pinned allocator to 64 GiB. With `PLE_SHARED_DIR` it is a
+shared mapping of one tmpfs file registered with CUDA: this recipe and the
+one-card one on one host took 48 GiB of host shared memory together (each 64 GiB
+alone before), with step times and greedy outputs as with a private table
+(16 users 55.15 against 55.77 ms per step on one card).
+
+### Copy-on-write in chunks
+
+A burst of 32 requests sharing a prompt on the one-card build (MTP mode, its
+engine-chosen block size) asked the engine's copy-on-write for 4.04 GiB in one
+gather with 3.86 GiB free, and the engine died (`torch.OutOfMemoryError` in
+`copy_kv_cache_blocks_inplace`). In chunks of 256 MiB the same load ran clean. It
+had not happened with this recipe's defaults; the fix applies to both.
 
 ## Release 0.1.0
 
