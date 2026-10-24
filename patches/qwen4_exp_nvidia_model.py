@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
 # Modified by Morrowmake for CMP 170HX support; see repository history.
-# Modified 2026-10-19 by ElectroHobo for the qwen38-flash-next-w4a16-cmp170hx-recipe:
+# Modified 2026-10-19 by ElectroHobo for the qwen38-flash-next-w4a16-2x-cmp170hx-recipe:
 # DFlash 2 drafter support for Qwen3.8-Flash-Next (see patches/README.md and
 # patches/qwen4exp-dflash2-capture.diff). Otherwise identical to
 # Morrowmake/vllm-cmp170hx at 18305948acba3f4c4d912cdd56f2202d2ebd94e8.
