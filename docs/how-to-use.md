@@ -68,7 +68,9 @@ Both use RecoverSSM and fit 128 requests. Tables: [results.md](results.md),
 ## Several servers, one table
 
 The n-gram table is 48 GiB of host memory that every server pins for itself
-(64 GiB as the engine allocates it). Servers on one host can share one copy:
+(64 GiB as the engine allocates it). Servers on one host can share one copy;
+each server still needs two cards of its own (a server fills its cards) and host RAM for its
+engine:
 
 ```
 PLE_SHARED_DIR=/dev/shm/qwen38-ple   # in .env of every server that shares

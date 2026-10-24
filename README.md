@@ -145,8 +145,9 @@ temperature 0 (`bench/concurrency_sweep.py`):
 On a mixed workload (requests of different lengths and topics at once) MTP's lead
 from 16 users up was larger in our runs, 7 to 17 %. Per user, 128 at once get
 about 15 tok/s each; lower `MAX_SEQS` if each user's speed matters more than the
-total. One server cannot switch drafters by load; with the shared n-gram table a
-second server costs only its own engine, not another 48 GiB
+total. One server cannot switch drafters by load. To have both, run a second
+server with the other drafter: it needs its own two cards and about 16 GB of host
+RAM, but with the shared n-gram table not a second copy of the 48 GiB table
 ([docs/how-to-use.md](docs/how-to-use.md), "Several servers, one table").
 
 ## One-time host setup
