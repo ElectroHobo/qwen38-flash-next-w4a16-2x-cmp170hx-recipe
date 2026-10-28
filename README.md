@@ -98,7 +98,7 @@ not both.
 ## Why this build exists: old CPUs
 
 This recipe was made for a server with **2016-era CPUs** (dual Xeon E5-2697A v4,
-Broadwell, 3.5 GHz) and a lot of RAM.
+Broadwell, 3.5 GHz).
 
 Morrowmake's EXL3 recipe reads the model's 51B-parameter n-gram table from the
 SSD in the middle of every decode step, and that read breaks the step into
@@ -109,14 +109,19 @@ published 153. The weight format has nothing to do with it: we measured a
 W4A16 checkpoint on the same engine in the same piecewise mode at the same
 44 ms.
 
-This build keeps the table in host RAM instead (it is FP8 in halt95's
-checkpoint, 51 GB), which lets the engine capture **the whole decode step as
-one CUDA graph**. The step drops to 15 ms and the CPU stops mattering: on the
-same Broadwell box this recipe is faster for one user than the EXL3 recipe is
-on Morrowmake's hardware. If your host has a current CPU, the EXL3 recipe may
-suit you as well or better (its weights are 5.05 bpw, a finer quantisation
-than INT4, and it needs no RAM for the table); if your host is old and has
-96 GB or more of RAM, this is the one.
+This build keeps the table where the cards read it themselves: in host RAM (it
+is FP8 in halt95's checkpoint, 51 GB) or, since 0.3.0, in a file on disk that
+the cards read through HMM while the page cache keeps the rows in use in RAM.
+Either way the lookup is a GPU kernel, which lets the engine capture **the
+whole decode step as one CUDA graph**. The step drops to 15 ms and the CPU stops
+mattering: on the same Broadwell box this recipe is faster for one user than the
+EXL3 recipe is on Morrowmake's hardware, and with the table on disk it stays
+within 1–4 % of that at eight users (prompt reading about 15 % slower). If your
+host has a current CPU, the EXL3 recipe may suit you as well or better (its
+weights are 5.05 bpw, a finer quantisation than INT4); if your host is old, this
+is the one: with 96 GB or more of RAM keep the table in RAM, with less put it on
+an SSD ([The table on disk](docs/how-to-use.md#the-table-on-disk); it needs
+NVIDIA's open kernel modules with HMM).
 
 Three lines separate this recipe's `serve.sh` from Morrowmake's: the checkpoint
 loads through vLLM's ordinary loader (`--load-format auto`), the table is
@@ -193,7 +198,9 @@ RAM, but with the shared n-gram table not a second copy of the 48 GiB table
 - For `./start.sh`: `git`, `curl`, `flock`, `setsid`, Python 3 for the boot
   check, and `jq` for the smoke test.
 - About 130 GiB of free disk for the checkpoint (115.3 GiB), plus the engine
-  image and the kernel compile caches. The disk only matters while loading.
+  image and the kernel compile caches. The disk only matters while loading,
+  unless the n-gram table is on it too: that file is read while decoding, so give
+  it an SSD (48 GiB more).
 
 ## Hardware
 
@@ -219,7 +226,7 @@ Pick the cards with `CUDA_VISIBLE_DEVICES` (two distinct nvidia-smi numbers).
 | Engine | [Morrowmake/vllm-cmp170hx](https://github.com/Morrowmake/vllm-cmp170hx/tree/18305948acba3f4c4d912cdd56f2202d2ebd94e8) at `18305948acba3f4c4d912cdd56f2202d2ebd94e8` |
 | Image | `ghcr.io/morrowmake/vllm-cmp170hx@sha256:5b45c4d6feafefe2eba962375b0a9a0b64fd22b9e05abb4d1966f14a32a2db79`, Morrowmake's release image for their Qwen EXL3 recipe, used as released apart from the mounted files. The first start compiles kernels and RecoverSSM's verify (about 22 minutes), later starts take 5 to 11 |
 | Checkpoint | `halt95/Qwen3.8-Flash-Next-W4A16-Merlin`, revision `cec53e9f90e5995b81691604ec0b32191debf797` (weights unchanged since 2026-09-08 per the card) |
-| Precision | routed experts INT4 g128 (Intel AutoRound), Gated DeltaNet projections INT8, attention / norms / embeddings / lm_head / shared expert / vision BF16, n-gram table FP8 in host RAM, **KV cache BF16**, indexer cache BF16, **GDN recurrent states BF16** (the checkpoint asks for fp32; `SSM_DTYPE=float32` restores it) |
+| Precision | routed experts INT4 g128 (Intel AutoRound), Gated DeltaNet projections INT8, attention / norms / embeddings / lm_head / shared expert / vision BF16, n-gram table FP8 in host RAM or in a file on disk, **KV cache BF16**, indexer cache BF16, **GDN recurrent states BF16** (the checkpoint asks for fp32; `SSM_DTYPE=float32` restores it) |
 | Drafter | [incoai/Qwen3.8-Flash-Next-DFlash2](https://huggingface.co/incoai/Qwen3.8-Flash-Next-DFlash2), revision `a22a1744e85c17364dcc54a6a420af7135d4c7f6` (Apache-2.0, 1.1 GiB): 7 drafts for one or two requests, 5 for three or four, 3 to 32, 2 beyond. Alternative: the checkpoint's MTP head (`SPEC_MODE=mtp`), 3 drafts to four requests, 2 to eight, 1 beyond |
 | Engine patches | files in [`patches/`](patches/), mounted read-only over the image's: the DFlash 2 capture hook and speculation-method check (dflash mode), RecoverSSM for the GDN layers (a new package, its CUDA verify built at first start, and three edited files), the shared n-gram table loader and chunked copy-on-write (every mode) |
 | Requests | up to 128 at once (`MAX_SEQS`), 94 % of the KV pool with 128 running |

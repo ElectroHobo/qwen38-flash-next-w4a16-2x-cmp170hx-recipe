@@ -10,7 +10,8 @@
   tier on.
 - Docker with the NVIDIA Container Toolkit, usable by your user.
 - About 130 GiB of free disk for the checkpoint (115.3 GiB) and the engine's
-  compile caches. Any disk: it is read once per start, not during decoding.
+  compile caches. Any disk: it is read once per start, not during decoding (the n-gram table on disk is,
+  so that file wants an SSD).
 - `git`, `curl`, `flock`, `setsid`, Python 3, `jq`.
 
 ## Step by step
