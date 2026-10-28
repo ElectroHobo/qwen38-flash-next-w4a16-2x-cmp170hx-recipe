@@ -104,8 +104,8 @@ two-card one of the same table (this recipe and
 share it. Loading fills empty rows and compares filled ones byte for byte under a
 file lock; a server whose table differs stops at load instead of changing rows
 another server reads. Measured: two servers (one card and two cards) in 48 GiB of
-host shared memory together, against 64 GiB for one before; step times and outputs
-as with a private table. The same file also lets the AutoRound (INC) form of the
+host shared memory together, against 64 GiB for one before; step times as
+with a private table. The same file also lets the AutoRound (INC) form of the
 table load (the one-card recipe's checkpoint), which this recipe does not use.
 
 **The table on disk (0.3.0).** When `PLE_SHARED_DIR` is not on tmpfs, `serve.sh` sets
@@ -115,8 +115,8 @@ it need not be. The lookup runs a copy of the pinned kernel,
 `_lookup_ple_embedding_from_hmm_kernel`, that takes the table's address as an integer:
 Triton refuses a tensor over memory CUDA does not know, but under HMM the card reads the
 host address itself, and a page not in the page cache is read from the file by the
-kernel. The lookup stays inside the CUDA graph, so the step stays off the CPU. Rows and
-outputs are the same as from RAM; the cost is in [docs/results.md](../docs/results.md#the-table-on-disk).
+kernel. The lookup stays inside the CUDA graph, so the step stays off the CPU. The rows are
+byte for byte those from RAM; the cost is in [docs/results.md](../docs/results.md#from-fresh-clones).
 
 ## Copy-on-write in chunks
 

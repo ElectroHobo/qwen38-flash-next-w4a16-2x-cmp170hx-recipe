@@ -1,0 +1,23 @@
+{
+ "tag": "030-2x-disk",
+ "model": "qwen3.8-flash-next",
+ "tokens": 700,
+ "rounds": [
+  {
+   "users": 128,
+   "tokens": 89600,
+   "wall_s": 48.289,
+   "aggregate_tok_s": 1855.5,
+   "ms_per_step": 150.9,
+   "tokens_per_request_step": 2.494
+  },
+  {
+   "users": 128,
+   "tokens": 89600,
+   "wall_s": 48.542,
+   "aggregate_tok_s": 1845.8,
+   "ms_per_step": 152.65,
+   "tokens_per_request_step": 2.495
+  }
+ ]
+}

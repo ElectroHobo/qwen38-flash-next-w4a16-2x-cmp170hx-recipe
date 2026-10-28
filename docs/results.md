@@ -2,13 +2,118 @@
 
 Every number here was measured on the same box: 2× CMP 170HX (74 SMs, 64 GiB,
 180 W, PCIe Gen2 x16, P2P on) in a dual Xeon E5-2697A v4 (Broadwell) host with
-204 GiB of RAM, driver 610.57.04, Morrowmake's engine at
+204 GiB of RAM (352 GB at 1600 MT/s for 0.3.0), driver 610.57.04, Morrowmake's engine at
 `18305948acba3f4c4d912cdd56f2202d2ebd94e8`. Raw files for each release's runs are
 in [`bench/results/release-0.2.0/`](../bench/results/release-0.2.0/) and
 [`bench/results/release-0.1.0/`](../bench/results/release-0.1.0/), 0.2.0's
 development runs in `release-0.2.0/development/`; the harnesses are in
 [`bench/`](../bench/). Dates are 2026-10-18 to 2026-10-23.
 
+## Release 0.3.0
+
+0.3.0 adds one thing, the n-gram table on disk; the defaults, engine image and
+checkpoint are 0.2.0's. Measured 2026-10-27 on the same box with its memory changed:
+352 GB since that day (the earlier releases ran on 204 GiB), all 24 slots filled, so
+the memory runs at 1600 MT/s instead of 2133. Raw files:
+[`bench/results/release-0.3.0/`](../bench/results/release-0.3.0/) (the run's log is
+`fresh-clone-0.3.0-run.txt`).
+
+### From fresh clones
+
+A fresh clone of this release beside one of the one-card recipe's 0.2.0, this one on
+cards 2 and 3; first both with their own pinned tables (the default), then both with
+`PLE_SHARED_DIR=/srv/models/qwen38-ple`, a folder on an XFS volume striped over three
+NVMe drives, which the first start filled. `cmp_recipe_bench.py` as before;
+`concurrency_sweep.py` at 128 users only. Every start's startup check passed.
+
+| | table in RAM (default) | table on disk, DFlash 2 | table on disk, MTP |
+|---|---:|---:|---:|
+| 1 user, structured / code / prose | 234.9 / 358.6 / 200.8 | 232.8 / 344.4 / 199.3 | 203.9 / 243.3 / 171.7 |
+| 2 users, total | 361.2 / 530.5 / 315.0 | 390.8 / 485.6 / 291.7 | 333.0 / 387.0 / 287.7 |
+| 4 users, total | 563.3 / 724.8 / 478.9 | 529.8 / 732.2 / 443.6 | 537.3 / 560.2 / 446.2 |
+| 8 users, total | 885.9 / 980.9 / 753.0 | 878.8 / 976.0 / 726.2 | 820.6 / 815.6 / 682.9 |
+| 128 users, total (`concurrency_sweep.py`) | 1,937.3 (0.2.0) | 1,850.7 | 1,891.4 |
+| Cold prefill | 4,696 (0.2.0) | 4,000 | — |
+| KV pool | 1,475,836 tokens | 1,480,943 tokens | 1,443,001 tokens |
+| Start to healthy | 1,249 s (with the one-card server pinning its table at the same time) | 359 s (the file written in it) | 410 s |
+
+With the whole table in the page cache the disk costs 1–4 % at eight users and
+4 % at 128, and 15 % of prompt reading: a long new prompt touches many table pages
+the cards have not mapped yet, and each first touch is a fault. One-user cells move
+by more than that between runs (this box's one-user code figure has ranged
+349.7–358.6 across releases), so they say little either way.
+
+### How it works, and what one lookup costs
+
+The engine looks the table up with a Triton kernel that copies rows from pinned host
+memory through a CUDA view of it, inside the step's CUDA graph. A file on disk
+cannot be pinned (`cudaHostRegister` fails: the kernel refuses long-term pins of its
+pages), but on this driver the cards can read ordinary host memory directly: the
+cmpunlocker driver is NVIDIA's open kernel modules, which report
+`Addressing Mode: HMM`. Torch and Triton both refuse a tensor over memory CUDA does
+not know, so the disk path passes the table's address to a copy of the kernel as an
+integer. A page in the page cache is read over PCIe as pinned memory is; a page
+missing from it faults, and the kernel reads it from the file.
+
+A probe of the lookup alone (128 random rows of 320 bytes, the shape of one step's
+rows, in a CUDA graph, every result checked against the CPU's read; 16 GiB test file
+on the same volume): pinned **42–47 µs**; mapped file fully cached but every row on
+a page the card had not touched, 1,138 µs; with reuse skewed like word frequencies
+(Zipf 1.1), **227 µs** median, falling from 337 to 190 µs over 20,000 lookups as the
+hot pages were mapped; with the page cache dropped, 14,389 µs. The engine's pinned
+and disk kernels on the real 47.7 GiB table returned identical bytes for 81,920
+random rows, and the disk kernel matched the CPU's read of rows anywhere in the
+table.
+
+### How much RAM the table on disk needs
+
+One server at a time with the table on disk, its container capped with
+`docker update --memory` (the cap holds the server's own memory and every page of
+the file it caches), stepping down; the page cache had been dropped before the
+start, so the server cached only what it touched. The server's own memory was
+14 GiB; of the table, only 2–6 GiB stayed cached through these runs.
+
+| Container capped at | 1 user | 8 users, total |
+|---|---:|---:|
+| none (48 GiB of the table cached) | 232.8 / 344.4 / 199.3 | 878.8 / 976.0 / 726.2 |
+| 62 GiB, just after the cap | 228.1 / 316.0 / 159.9 | 833.5 / 953.1 / 602.1 |
+| 46 GiB | 226.5 / 329.3 / 173.9 | 834.0 / 958.5 / 659.5 |
+| 38 GiB | 229.7 / 335.4 / 186.8 | 827.3 / 935.7 / 633.7 |
+| 30 GiB | 245.1 / 339.0 / 190.2 | 833.8 / 949.1 / 645.6 |
+| 22 GiB | 236.1 / 338.5 / 180.9 | 840.8 / 946.1 / 624.9 |
+
+Our three benchmark prompts use little of the table; varied traffic uses more, so
+read these as how small the floor can be, not as a promise. Prose, with the most
+varied word combinations, loses most (9–17 % at eight users). The first row is
+lower than the next ones because it was measured while the kernel was still
+evicting what the start had cached.
+
+### Under host memory pressure
+
+In development (2026-10-27, both dev copies, the table shared on disk), a process
+that held most of the host's memory: with 260 GiB taken the kernel swapped other
+memory and kept the whole table, eight users 861.0 / 971.3 / 562.8 tok/s here (prose
+lost 26 %, probably the kernel's reclaim scanning unmapping pages the card then
+refaults); with 280 GiB taken about 60 % of the table stayed cached, eight users
+780.0 / 890.6 / 487.0 (−12 / −11 / −36 %), one user 219.6 / 339.6 / 162.1. With the
+table pinned in RAM that second point does not fit at all. Raw:
+`development/ple-hmm-ab.txt`.
+
+### Same output, and quality
+
+Five fixed prompts (the bench's three, a word problem and a summary), 400 tokens,
+temperature 0, thinking off, sent twice to the same server: with the table pinned in
+RAM 0 of 5 replies came back byte-identical, with the table on disk 1 of 5 (the one-card recipe: 1 and 0).
+The replies part after tens to hundreds of characters on a different, equally
+plausible word. Why, we have not traced; it happens with the table in RAM too, so it
+is not the disk path, and it means RAM against disk cannot be compared byte for byte
+(0 of 5 there, as expected). What is checked exactly is the lookup: the same bytes
+from both kernels ([above](#how-it-works-and-what-one-lookup-costs)), and every start compares the
+table file with the checkpoint byte for byte.
+
+So quality is scored: HumanEval and GSM8K (first 200) with the table on disk,
+DFlash 2, thinking on, **162/164, 196/200**, against 0.2.0's 162/164, 198/200 with the table in RAM. Two GSM8K problems are within what runs move by: 0.2.0's MTP run scored 197/200 on the same suite. Raw:
+`quality-0.3.0-fresh-disk-*`, `same-output-0.3.0-*.json`, `repeat-0.3.0-*.json`.
 ## Release 0.2.0
 
 ### From a fresh clone
@@ -127,8 +232,10 @@ The table is 48 GiB of FP8 rows in pinned host memory, allocated per server and
 rounded by torch's pinned allocator to 64 GiB. With `PLE_SHARED_DIR` it is a
 shared mapping of one tmpfs file registered with CUDA: this recipe and the
 one-card one on one host took 48 GiB of host shared memory together (each 64 GiB
-alone before), with step times and greedy outputs as with a private table
-(16 users 55.15 against 55.77 ms per step on one card). Again on 2026-10-24
+alone before), with step times as with a private table (16 users 55.15
+against 55.77 ms per step on one card). (This said "and greedy outputs" too until
+0.3.0; repeated requests to one server do not match byte for byte on this engine, so
+that comparison showed nothing: [Same output, and quality](#same-output-and-quality).) Again on 2026-10-24
 with the release code, this recipe's fresh clone beside the one-card recipe's
 build on one 47.68 GiB file: 49 GiB of host shared memory with both up, one user
 here 241.0 / 347.0 / 196.0 tok/s (241.2 / 349.7 / 198.4 alone). Raw:

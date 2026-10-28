@@ -2,8 +2,9 @@
 
 ## Status
 
-Release 0.2.0 (2026-10-24). Measured on one box: a dual Xeon E5-2697A v4 host
-with two CMP 170HX cards. 0.1.0 was measured over a weekend; 0.2.0's
+Release 0.3.0 (2026-10-28). Measured on one box: a dual Xeon E5-2697A v4 host
+with two CMP 170HX cards. 0.3.0 adds the n-gram table on disk, checked from fresh
+clones the night of 2026-10-27; it has not served real traffic yet. 0.1.0 was measured over a weekend; 0.2.0's
 additions (RecoverSSM, BF16 GDN states, 128 requests, the shared table, the MTP
 schedule) ran through a day of development benchmarks, debug checks and quality
 runs, then the release benchmarks from a fresh clone. They have not served
@@ -20,11 +21,18 @@ real traffic for days yet.
 - **INT4 experts, not EXL3.** The EXL3 recipe's weights are 5.05 bits per
   weight; this checkpoint's experts are 4-bit with 128-wide groups. The two
   suites above are not where such a difference would show first.
-- **96 GB of host RAM is the floor.** The n-gram table is 48 GiB of pinned host
-  memory (64 GiB as the engine allocates it), allocated at start; the engine
-  refuses to start without it. The EXL3 recipe streams the same table from the
-  SSD and runs in 32 GB. `PLE_SHARED_DIR` shares one copy between servers; its
-  file stays in RAM until a reboot or until you delete it.
+- **96 GB of host RAM with the table in RAM.** The n-gram table is 48 GiB of
+  pinned host memory (64 GiB as the engine allocates it), allocated at start.
+  `PLE_SHARED_DIR` on tmpfs shares one copy between servers; its file stays in
+  RAM until a reboot or until you delete it. With `PLE_SHARED_DIR` on a disk
+  filesystem the table is a file read through HMM and the floor is much lower
+  (22 GiB for the whole container on our prompts); below the table's working
+  set every missing row is a read from the file, and prose pays most.
+- **The table on disk needs HMM** (NVIDIA's open kernel modules) and 48 GiB of
+  disk on top of the checkpoint, which holds the same rows in another layout. It
+  reads prompts about 15 % slower than from RAM: a long new prompt touches many
+  pages the card has not mapped yet. Measured on one host, with the files on an
+  NVMe stripe; a slower disk makes every missing row slower.
 - **Two cards, whole experts per card, tensor parallel only.** An expert
   cannot be split across the cards (the INT4 scale groups would straddle them),
   and the engine refuses pipeline parallelism for this model ("N-gram PLE

@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.3.0 — 2026-10-28
+
+The n-gram table on disk, for hosts with less RAM. Same engine image, checkpoint
+and defaults as 0.2.0; without the new use of `PLE_SHARED_DIR` it runs as 0.2.0.
+
+- **`PLE_SHARED_DIR` on a disk filesystem** keeps the 48 GiB table in a file
+  there instead of pinned RAM (`patches/qwen4_exp_common_ngram_embedding.py`,
+  `serve.sh`): the mapping is not registered with CUDA (a disk file cannot be
+  pinned), and the lookup is a copy of the pinned kernel that takes the table's
+  address as an integer, which the cards read through HMM inside the same CUDA
+  graph. On tmpfs nothing changes. `serve.sh` picks by the folder's filesystem and
+  sets `VLLM_QWEN_PLE_SHARED_PIN`; it and `./start.sh`'s preflight stop if a card
+  does not report `Addressing Mode: HMM`, and the preflight checks the 48 GiB.
+- From fresh clones, table on disk against RAM: one user 232.8 / 344.4 / 199.3
+  against 234.9 / 358.6 / 200.8 tok/s, eight users 878.8 / 976.0 / 726.2 against
+  885.9 / 980.9 / 753.0, 1,851 tok/s at 128 users (1,891 with MTP), cold prefill
+  4,000 tok/s (4,696 in 0.2.0). With the whole container capped at 22 GiB:
+  eight users 840.8 / 946.1 / 624.9. HumanEval / GSM8K
+  with the table on disk 162/164, 196/200 (0.2.0 in RAM: 162/164, 198/200).
+- `.env.advanced.example`: `PLE_PLACEMENT` is the EXL3 reader's switch and does
+  not apply to this build; its comment said otherwise.
+
 ## 0.2.0 — 2026-10-24
 
 Many users: up to 128 requests at once instead of 8, and on the same box and
