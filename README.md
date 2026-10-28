@@ -28,8 +28,8 @@ Without that setting 0.3.0 runs as 0.2.0. From fresh clones, 2026-10-27:
 |---|---:|---:|
 | 1 user, structured / code / prose | 234.9 / 358.6 / 200.8 | 232.8 / 344.4 / 199.3 |
 | 8 users, total | 885.9 / 980.9 / 753.0 | 878.8 / 976.0 / 726.2 |
-| 128 users, total | 1,937 (0.2.0's release run) | 1,851 |
-| Cold prefill | 4,696 (0.2.0's release run) | 4,000 |
+| 128 users, total | 1,934 | 1,851 |
+| Cold prefill | 4,723 | 4,000 |
 | HumanEval / GSM8K (first 200) | 162/164, 198/200 (0.2.0) | 162/164, 196/200 |
 | Host memory the server holds | the 48 GiB table pinned (64 GiB as allocated) + 14 GiB | 14 GiB, plus what the page cache keeps of the table |
 | Whole container capped at 22 GiB, 8 users | does not fit | 840.8 / 946.1 / 624.9 |

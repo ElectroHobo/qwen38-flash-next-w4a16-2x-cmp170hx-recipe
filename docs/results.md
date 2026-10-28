@@ -25,7 +25,9 @@ A fresh clone of this release beside one of the one-card recipe's 0.2.0, this on
 cards 2 and 3; first both with their own pinned tables (the default), then both with
 `PLE_SHARED_DIR=/srv/models/qwen38-ple`, a folder on an XFS volume striped over three
 NVMe drives, which the first start filled. `cmp_recipe_bench.py` as before;
-`concurrency_sweep.py` at 128 users only. Every start's startup check passed.
+`concurrency_sweep.py` at 128 users only. Every start's startup check passed. The RAM
+column's cold prefill and 128-user cells are from the same clones started again
+afterwards (2026-10-28 01:49).
 
 | | table in RAM (default) | table on disk, DFlash 2 | table on disk, MTP |
 |---|---:|---:|---:|
@@ -33,8 +35,8 @@ NVMe drives, which the first start filled. `cmp_recipe_bench.py` as before;
 | 2 users, total | 361.2 / 530.5 / 315.0 | 390.8 / 485.6 / 291.7 | 333.0 / 387.0 / 287.7 |
 | 4 users, total | 563.3 / 724.8 / 478.9 | 529.8 / 732.2 / 443.6 | 537.3 / 560.2 / 446.2 |
 | 8 users, total | 885.9 / 980.9 / 753.0 | 878.8 / 976.0 / 726.2 | 820.6 / 815.6 / 682.9 |
-| 128 users, total (`concurrency_sweep.py`) | 1,937.3 (0.2.0) | 1,850.7 | 1,891.4 |
-| Cold prefill | 4,696 (0.2.0) | 4,000 | — |
+| 128 users, total (`concurrency_sweep.py`) | 1,933.8 | 1,850.7 | 1,891.4 |
+| Cold prefill | 4,723 | 4,000 | — |
 | KV pool | 1,475,836 tokens | 1,480,943 tokens | 1,443,001 tokens |
 | Start to healthy | 1,249 s (with the one-card server pinning its table at the same time) | 359 s (the file written in it) | 410 s |
 

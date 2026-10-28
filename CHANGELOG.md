@@ -16,7 +16,7 @@ and defaults as 0.2.0; without the new use of `PLE_SHARED_DIR` it runs as 0.2.0.
 - From fresh clones, table on disk against RAM: one user 232.8 / 344.4 / 199.3
   against 234.9 / 358.6 / 200.8 tok/s, eight users 878.8 / 976.0 / 726.2 against
   885.9 / 980.9 / 753.0, 1,851 tok/s at 128 users (1,891 with MTP), cold prefill
-  4,000 tok/s (4,696 in 0.2.0). With the whole container capped at 22 GiB:
+  4,000 tok/s (4,723 from RAM). With the whole container capped at 22 GiB:
   eight users 840.8 / 946.1 / 624.9. HumanEval / GSM8K
   with the table on disk 162/164, 196/200 (0.2.0 in RAM: 162/164, 198/200).
 - `.env.advanced.example`: `PLE_PLACEMENT` is the EXL3 reader's switch and does
