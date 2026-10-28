@@ -4,10 +4,11 @@ Every number here was measured on the same box: 2× CMP 170HX (74 SMs, 64 GiB,
 180 W, PCIe Gen2 x16, P2P on) in a dual Xeon E5-2697A v4 (Broadwell) host with
 204 GiB of RAM (352 GB at 1600 MT/s for 0.3.0), driver 610.57.04, Morrowmake's engine at
 `18305948acba3f4c4d912cdd56f2202d2ebd94e8`. Raw files for each release's runs are
-in [`bench/results/release-0.2.0/`](../bench/results/release-0.2.0/) and
-[`bench/results/release-0.1.0/`](../bench/results/release-0.1.0/), 0.2.0's
-development runs in `release-0.2.0/development/`; the harnesses are in
-[`bench/`](../bench/). Dates are 2026-10-18 to 2026-10-23.
+in [`bench/results/release-0.3.0/`](../bench/results/release-0.3.0/),
+[`bench/results/release-0.2.0/`](../bench/results/release-0.2.0/) and
+[`bench/results/release-0.1.0/`](../bench/results/release-0.1.0/), 0.2.0's and
+0.3.0's development runs in their `development/`; the harnesses are in
+[`bench/`](../bench/). Dates are 2026-10-18 to 2026-10-27.
 
 ## Release 0.3.0
 
@@ -114,6 +115,7 @@ table file with the checkpoint byte for byte.
 So quality is scored: HumanEval and GSM8K (first 200) with the table on disk,
 DFlash 2, thinking on, **162/164, 196/200**, against 0.2.0's 162/164, 198/200 with the table in RAM. Two GSM8K problems are within what runs move by: 0.2.0's MTP run scored 197/200 on the same suite. Raw:
 `quality-0.3.0-fresh-disk-*`, `same-output-0.3.0-*.json`, `repeat-0.3.0-*.json`.
+
 ## Release 0.2.0
 
 ### From a fresh clone
