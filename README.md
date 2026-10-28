@@ -1,7 +1,7 @@
 # Qwen3.8-Flash-Next W4A16 on 2× CMP 170HX
 
 [![engine](https://img.shields.io/badge/engine-vllm--cmp170hx%2018305948ac-blue)](https://github.com/Morrowmake/vllm-cmp170hx/tree/18305948acba3f4c4d912cdd56f2202d2ebd94e8)
-![release](https://img.shields.io/badge/release-0.3.0-2ea44f)
+![release](https://img.shields.io/badge/release-0.3.1-2ea44f)
 
 **Qwen3.8-Flash-Next (125B MoE) on two CMP 170HX cards with the full
 262,144-token context: 241 / 350 / 198 tok/s for one user (structured / code /
@@ -258,7 +258,7 @@ paths ([`patches/README.md`](patches/README.md)). Environment:
 `VLLM_GDN_RECOVER=1` (RecoverSSM), `VLLM_USE_BREAKABLE_CUDAGRAPH=1`,
 `VLLM_QWEN4_QSA_TOPK_CANONICAL=1`, `VLLM_CUSTOM_ALLREDUCE_FLAGS=1`,
 `VLLM_THIN_GEMM=1`, `VLLM_THIN_GEMM_GLUON=1`, `VLLM_FLA_AUTOTUNE_SKIP_SPILLING=1`,
-`PYTORCH_CUDA_ALLOC_CONF=expandable_segments:False`, and after the P2P check
+`PYTORCH_CUDA_ALLOC_CONF=expandable_segments:False`, `PYTHONPYCACHEPREFIX=/cache/pycache`, and after the P2P check
 passes `VLLM_CUSTOM_ALLREDUCE_PCIE_P2P=1` with `NCCL_P2P_LEVEL=SYS`;
 `CUDA_DEVICE_ORDER=PCI_BUS_ID`; with `PLE_SHARED_DIR` also
 `VLLM_QWEN_PLE_SHARED_DIR`, `VLLM_QWEN_PLE_SHARED_NAME` and
